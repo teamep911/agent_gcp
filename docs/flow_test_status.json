@@ -1,0 +1,104 @@
+{
+  "title": "Agent Monitor End-to-End Flow Test",
+  "updated_at": "2026-05-31T03:35:43+07:00",
+  "environment": {
+    "agent_host": "openclaw",
+    "agent_health": "http://127.0.0.1:2020/health",
+    "agent_oem_webhook": "http://127.0.0.1:2020/webhook/oem",
+    "agent_google_chat_command": "http://127.0.0.1:2020/google-chat/command",
+    "gateway_host": "gcp",
+    "gateway_health_public": "http://118.69.205.10:2222/health",
+    "gateway_alerts_public": "http://118.69.205.10:2222/agent/alerts",
+    "gateway_google_chat_events_public": "http://118.69.205.10:2222/google-chat/events"
+  },
+  "notes": [
+    "Current runtime uses temporary public IP fallback on 118.69.205.10:2222.",
+    "Preferred final endpoint remains https://gcp.leevo.top when DNS/tunnel is healthy."
+  ],
+  "tracks": [
+    {
+      "id": "track_a",
+      "name": "OEM -> Agent -> Gateway -> Google Chat",
+      "steps": [
+        {
+          "id": "a1",
+          "label": "Agent health check",
+          "status": "passed",
+          "detail": "{\"status\":\"ok\",\"service\":\"agent_monitor\",\"version\":\"0.1.0\"}"
+        },
+        {
+          "id": "a2",
+          "label": "Gateway public health check",
+          "status": "passed",
+          "detail": "{\"status\":\"ok\",\"service\":\"ggchat_app\"}"
+        },
+        {
+          "id": "a3",
+          "label": "Send signed synthetic OEM alert to Agent",
+          "status": "passed",
+          "detail": "{\"status\":\"accepted\",\"incident_id\":83,\"gcp_sent\":true}"
+        },
+        {
+          "id": "a4",
+          "label": "Verify Agent rule match and incident save",
+          "status": "passed",
+          "detail": "rule_engine.matched + db.incident.saved found"
+        },
+        {
+          "id": "a5",
+          "label": "Verify Agent outbound send to Gateway",
+          "status": "passed",
+          "detail": "gcp_gateway.alert.sent found"
+        },
+        {
+          "id": "a6",
+          "label": "Verify Gateway accepted alert",
+          "status": "passed",
+          "detail": "Gateway reachable and alert path accepted; final webhook delivery is not fully observable from shell"
+        },
+        {
+          "id": "a7",
+          "label": "Verify Google Chat delivery if observable",
+          "status": "manual_verify",
+          "detail": "Manual confirm in Google Chat space if message visibility is required"
+        }
+      ]
+    },
+    {
+      "id": "track_b",
+      "name": "Google Chat -> Gateway -> Agent",
+      "steps": [
+        {
+          "id": "b1",
+          "label": "Gateway public health check",
+          "status": "passed",
+          "detail": "{\"status\":\"ok\",\"service\":\"ggchat_app\"}"
+        },
+        {
+          "id": "b2",
+          "label": "Send synthetic Google Chat event to Gateway",
+          "status": "passed",
+          "detail": "{\"text\":\"✅ Accepted command `/status flex`. job_id=gchat-00d7caab5206\"}"
+        },
+        {
+          "id": "b3",
+          "label": "Verify Gateway authorization accepted user/domain",
+          "status": "passed",
+          "detail": "{\"text\":\"✅ Accepted command `/status flex`. job_id=gchat-00d7caab5206\"}"
+        },
+        {
+          "id": "b4",
+          "label": "Verify Gateway forwarded command to Agent",
+          "status": "passed",
+          "detail": "google_chat.command.accepted found"
+        },
+        {
+          "id": "b5",
+          "label": "Verify Agent accepted command and returned job_id",
+          "status": "passed",
+          "detail": "{\"text\":\"✅ Accepted command `/status flex`. job_id=gchat-00d7caab5206\"}"
+        }
+      ]
+    }
+  ]
+}

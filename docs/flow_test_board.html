@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Monitor Flow Test Board</title>
+  <style>
+    :root { --bg:#020617; --panel:#0f172a; --text:#e5eefb; --muted:#94a3b8; --border:#1e293b; --cyan:#22d3ee; --emerald:#34d399; --amber:#fbbf24; --running:#38bdf8; --pending:#475569; --passed:#22c55e; --failed:#ef4444; --manual:#f59e0b; --shadow:0 10px 40px rgba(0,0,0,.35); }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif; color:var(--text); background:linear-gradient(rgba(2,6,23,.96),rgba(2,6,23,.96)),linear-gradient(#1e293b 1px,transparent 1px),linear-gradient(90deg,#1e293b 1px,transparent 1px); background-size:auto,32px 32px,32px 32px; min-height:100vh; }
+    .wrap { max-width:1500px; margin:0 auto; padding:28px; }
+    .hero,.card { background:rgba(15,23,42,.92); border:1px solid var(--border); border-radius:20px; box-shadow:var(--shadow); }
+    .hero { padding:24px; margin-bottom:20px; } .eyebrow { color:var(--cyan); text-transform:uppercase; letter-spacing:.14em; font-size:12px; } h1 { margin:8px 0 10px; font-size:34px; } .sub { color:var(--muted); max-width:900px; line-height:1.6; }
+    .meta { display:flex; gap:12px; flex-wrap:wrap; margin-top:14px; } .pill { border:1px solid var(--border); border-radius:999px; padding:8px 12px; color:var(--muted); background:rgba(2,6,23,.6); }
+    .grid { display:grid; grid-template-columns:330px 1fr; gap:20px; } .stack { display:grid; gap:20px; } .card { padding:18px; } .card h2 { margin:0 0 14px; font-size:18px; }
+    .endpoint { padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:rgba(2,6,23,.45); margin-bottom:10px; } .endpoint small { display:block; color:var(--muted); margin-bottom:4px; } .endpoint code { color:#c7d2fe; font-size:12px; word-break:break-all; }
+    .flow { display:grid; grid-template-columns:repeat(7,minmax(110px,1fr)); gap:12px; align-items:center; margin-bottom:20px; }
+    .node { min-height:92px; padding:12px; border:1px solid var(--border); border-radius:16px; background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.72)); display:flex; flex-direction:column; justify-content:center; text-align:center; position:relative; overflow:hidden; }
+    .node::after { content:""; position:absolute; inset:-30%; opacity:0; background:radial-gradient(circle,currentColor 0%,transparent 58%); transition:opacity .25s ease; } .node.active::after { opacity:.18; } .node small { color:var(--muted); font-size:12px; } .node strong { font-size:14px; margin-top:6px; }
+    .frontend { color:var(--cyan); } .backend { color:var(--emerald); } .external { color:#cbd5e1; } .gateway { color:var(--amber); } .db { color:#a78bfa; }
+    .arrow { height:2px; background:linear-gradient(90deg,transparent,#334155,transparent); position:relative; } .arrow::after { content:""; position:absolute; right:0; top:-4px; border-left:8px solid #475569; border-top:5px solid transparent; border-bottom:5px solid transparent; }
+    .track { margin-top:18px; } .track h3 { margin:0 0 12px; font-size:16px; color:#dbeafe; } .steps { display:grid; gap:10px; }
+    .step { border:1px solid var(--border); border-radius:14px; padding:12px 14px; background:rgba(2,6,23,.55); display:grid; grid-template-columns:18px 1fr; gap:12px; align-items:start; }
+    .dot { width:14px; height:14px; border-radius:50%; background:var(--pending); margin-top:2px; } .step.running .dot { background:var(--running); box-shadow:0 0 18px rgba(56,189,248,.9); } .step.passed .dot { background:var(--passed); box-shadow:0 0 14px rgba(34,197,94,.75); } .step.failed .dot { background:var(--failed); box-shadow:0 0 14px rgba(239,68,68,.75); } .step.manual_verify .dot { background:var(--manual); box-shadow:0 0 14px rgba(245,158,11,.75); }
+    .step-title { font-weight:700; } .detail { color:var(--muted); font-size:13px; margin-top:4px; white-space:pre-wrap; } .legend { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; } .legend span { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; } .legend i { width:11px; height:11px; border-radius:50%; display:inline-block; } ul.notes { margin:0; padding-left:18px; color:var(--muted); line-height:1.6; } .footer-note { color:var(--muted); font-size:12px; margin-top:14px; }
+    @media (max-width:1180px) { .grid { grid-template-columns:1fr; } .flow { grid-template-columns:1fr; } .arrow { height:24px; width:2px; margin:0 auto; } .arrow::after { right:-4px; top:auto; bottom:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:8px solid #475569; border-bottom:0; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero"><div class="eyebrow">Live Test Board</div><h1>Agent Monitor End-to-End Flow Test</h1><div class="sub">This board shows where the current test run is, which checkpoint passed/failed, and what still needs manual verification.</div><div class="meta"><div class="pill">Updated: 2026-05-31T03:35:43+07:00</div><div class="pill">Fallback path: public IP 118.69.205.10:2222</div><div class="pill">Preferred final path: gcp.leevo.top</div></div></section>
+    <section class="grid"><div class="stack"><div class="card"><h2>Runtime Endpoints</h2><div class="endpoint"><small>agent_host</small><code>openclaw</code></div><div class="endpoint"><small>agent_health</small><code>http://127.0.0.1:2020/health</code></div><div class="endpoint"><small>agent_oem_webhook</small><code>http://127.0.0.1:2020/webhook/oem</code></div><div class="endpoint"><small>agent_google_chat_command</small><code>http://127.0.0.1:2020/google-chat/command</code></div><div class="endpoint"><small>gateway_host</small><code>gcp</code></div><div class="endpoint"><small>gateway_health_public</small><code>http://118.69.205.10:2222/health</code></div><div class="endpoint"><small>gateway_alerts_public</small><code>http://118.69.205.10:2222/agent/alerts</code></div><div class="endpoint"><small>gateway_google_chat_events_public</small><code>http://118.69.205.10:2222/google-chat/events</code></div></div><div class="card"><h2>Notes / Blockers</h2><ul class="notes"><li>Current runtime uses temporary public IP fallback on 118.69.205.10:2222.</li><li>Preferred final endpoint remains https://gcp.leevo.top when DNS/tunnel is healthy.</li></ul></div><div class="card"><h2>Status Legend</h2><div class="legend"><span><i style="background:#475569"></i> Pending</span><span><i style="background:#38bdf8"></i> Running</span><span><i style="background:#22c55e"></i> Passed</span><span><i style="background:#ef4444"></i> Failed</span><span><i style="background:#f59e0b"></i> Manual verify</span></div><div class="footer-note">Run <code>scripts/run_flow_tests.py</code> to refresh this board.</div></div></div>
+    <div class="stack"><div class="card"><h2>Flow Map</h2><div class="flow"><div class="node external"><small>Source</small><strong>OEM Event</strong></div><div class="arrow"></div><div class="node backend"><small>openclaw</small><strong>Agent 2020</strong></div><div class="arrow"></div><div class="node db"><small>storage</small><strong>Incident DB</strong></div><div class="arrow"></div><div class="node gateway"><small>gcp</small><strong>Gateway 2222</strong></div></div><div class="flow"><div class="node external"><small>Source</small><strong>Google Chat Event</strong></div><div class="arrow"></div><div class="node gateway"><small>gcp</small><strong>Gateway 2222</strong></div><div class="arrow"></div><div class="node backend"><small>openclaw</small><strong>Agent 2020</strong></div><div class="arrow"></div><div class="node frontend"><small>response</small><strong>job_id Accepted</strong></div></div></div>
+    <div class="card track"><h3>Track A — OEM -> Agent -> Gateway -> Google Chat</h3><div class="steps"><div class="step passed" data-step="a1">
+      <div class="dot"></div>
+      <div><div class="step-title">A1 — Agent health check</div>
+      <div class="detail">{&quot;status&quot;:&quot;ok&quot;,&quot;service&quot;:&quot;agent_monitor&quot;,&quot;version&quot;:&quot;0.1.0&quot;}</div></div>
+    </div><div class="step passed" data-step="a2">
+      <div class="dot"></div>
+      <div><div class="step-title">A2 — Gateway public health check</div>
+      <div class="detail">{&quot;status&quot;:&quot;ok&quot;,&quot;service&quot;:&quot;ggchat_app&quot;}</div></div>
+    </div><div class="step passed" data-step="a3">
+      <div class="dot"></div>
+      <div><div class="step-title">A3 — Send signed synthetic OEM alert to Agent</div>
+      <div class="detail">{&quot;status&quot;:&quot;accepted&quot;,&quot;incident_id&quot;:83,&quot;gcp_sent&quot;:true}</div></div>
+    </div><div class="step passed" data-step="a4">
+      <div class="dot"></div>
+      <div><div class="step-title">A4 — Verify Agent rule match and incident save</div>
+      <div class="detail">rule_engine.matched + db.incident.saved found</div></div>
+    </div><div class="step passed" data-step="a5">
+      <div class="dot"></div>
+      <div><div class="step-title">A5 — Verify Agent outbound send to Gateway</div>
+      <div class="detail">gcp_gateway.alert.sent found</div></div>
+    </div><div class="step passed" data-step="a6">
+      <div class="dot"></div>
+      <div><div class="step-title">A6 — Verify Gateway accepted alert</div>
+      <div class="detail">Gateway reachable and alert path accepted; final webhook delivery is not fully observable from shell</div></div>
+    </div><div class="step manual_verify" data-step="a7">
+      <div class="dot"></div>
+      <div><div class="step-title">A7 — Verify Google Chat delivery if observable</div>
+      <div class="detail">Manual confirm in Google Chat space if message visibility is required</div></div>
+    </div></div></div><div class="card track"><h3>Track B — Google Chat -> Gateway -> Agent</h3><div class="steps"><div class="step passed" data-step="b1">
+      <div class="dot"></div>
+      <div><div class="step-title">B1 — Gateway public health check</div>
+      <div class="detail">{&quot;status&quot;:&quot;ok&quot;,&quot;service&quot;:&quot;ggchat_app&quot;}</div></div>
+    </div><div class="step passed" data-step="b2">
+      <div class="dot"></div>
+      <div><div class="step-title">B2 — Send synthetic Google Chat event to Gateway</div>
+      <div class="detail">{&quot;text&quot;:&quot;✅ Accepted command `/status flex`. job_id=gchat-00d7caab5206&quot;}</div></div>
+    </div><div class="step passed" data-step="b3">
+      <div class="dot"></div>
+      <div><div class="step-title">B3 — Verify Gateway authorization accepted user/domain</div>
+      <div class="detail">{&quot;text&quot;:&quot;✅ Accepted command `/status flex`. job_id=gchat-00d7caab5206&quot;}</div></div>
+    </div><div class="step passed" data-step="b4">
+      <div class="dot"></div>
+      <div><div class="step-title">B4 — Verify Gateway forwarded command to Agent</div>
+      <div class="detail">google_chat.command.accepted found</div></div>
+    </div><div class="step passed" data-step="b5">
+      <div class="dot"></div>
+      <div><div class="step-title">B5 — Verify Agent accepted command and returned job_id</div>
+      <div class="detail">{&quot;text&quot;:&quot;✅ Accepted command `/status flex`. job_id=gchat-00d7caab5206&quot;}</div></div>
+    </div></div></div></div></section>
+  </div>
+</body>
+</html>
