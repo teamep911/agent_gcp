@@ -12,8 +12,9 @@ Updated during cutover to project `/u01/app/agent_monitor`.
 
 ### gcp
 - Service: `ggchat-app`
-- Local port: `2222`
-- Health: `http://127.0.0.1:2222/health`
+- Local/public bind port: `2222`
+- Health local: `http://127.0.0.1:2222/health`
+- Health public fallback: `http://118.69.205.10:2222/health`
 - Status: active
 
 ## What was proven
@@ -52,31 +53,61 @@ Result:
 - HTTP `202`
 - accepted with generated `job_id`
 
-## Current blocker
+### 4. Public IP fallback path works
+Because DNS `gcp.leevo.top` did not resolve from runtime hosts, temporary fallback was enabled using public IP and port 2222.
 
-Public DNS name `gcp.leevo.top` still does NOT resolve from runtime hosts/tools at test time.
+Current fallback path:
+- Agent posts to `http://118.69.205.10:2222/agent/alerts`
+- Public health: `http://118.69.205.10:2222/health`
+- Google Chat event endpoint fallback: `http://118.69.205.10:2222/google-chat/events`
 
-Observed failures:
-- from openclaw: `curl https://gcp.leevo.top/health` -> `Could not resolve host`
-- from gcp: `curl https://gcp.leevo.top/health` -> `Could not resolve host`
-- browser tool: `ERR_NAME_NOT_RESOLVED`
+Changes applied:
+- On `gcp`, `ggchat-app` now binds `0.0.0.0:2222`
+- On `openclaw`, Agent env now has:
+  - `GCP_GATEWAY_BASE_URL=http://118.69.205.10:2222`
 
-Because of this, true public path is NOT yet proven:
-- Agent -> `https://gcp.leevo.top/agent/alerts`
-- Google Chat internet callback -> `https://gcp.leevo.top/google-chat/events`
+Verification:
+- `curl http://118.69.205.10:2222/health` -> OK
+- Synthetic OEM webhook into Agent created `incident_id=81`
+- Agent log confirmed:
+  - `gcp_gateway.alert.sent`
+  - URL `http://118.69.205.10:2222/agent/alerts`
+  - `gcp_sent=true`
 
-## GCP gateway code changes applied
+## Remaining caveat
 
-On host `gcp`, file `/u01/app/ggchat_app/app/main.py` was updated to:
-- default Agent URL `http://10.10.10.110:2020`
-- send header `X-Gateway-Secret` when posting `/google-chat/command`
+Public IP fallback is plain HTTP, not HTTPS, and is only a temporary workaround until DNS/tunnel path is healthy.
 
-Runtime env on `gcp` was updated:
-- `AGENT_MONITOR_BASE_URL=http://10.10.10.110:2020`
+Preferred final state remains:
+- `https://gcp.leevo.top/agent/alerts`
+- `https://gcp.leevo.top/google-chat/events`
 
-## Next thing to test once DNS resolves
+## Runtime files changed during fallback
 
-1. `curl -k https://gcp.leevo.top/health`
-2. synthetic signed POST from openclaw to `https://gcp.leevo.top/agent/alerts`
-3. real Google Chat event into `https://gcp.leevo.top/google-chat/events`
-4. verify Google Chat thread reply callback path
+### openclaw
+- `/u01/app/agent_monitor/.env.runtime`
+  - `GCP_GATEWAY_BASE_URL=http://118.69.205.10:2222`
+- backup:
+  - `/u01/app/agent_monitor/.env.runtime.bak_ip_fallback_20260531_030623`
+
+### gcp
+- `/u01/app/ggchat_app/.env.runtime`
+  - `GCP_GATEWAY_HOST=0.0.0.0`
+  - `GCP_GATEWAY_PORT=2222`
+  - `AGENT_MONITOR_BASE_URL=http://10.10.10.110:2020`
+- backups:
+  - `/u01/app/ggchat_app/.env.runtime.bak_20260531_021234`
+  - `/u01/app/ggchat_app/.env.runtime.bak_bind_public_20260531_030543`
+- `/u01/app/ggchat_app/app/main.py`
+  - sends `X-Gateway-Secret` to Agent command endpoint
+  - default Agent URL updated to port `2020`
+
+## Next thing to do once DNS resolves
+
+1. Restore Agent base URL to `https://gcp.leevo.top`
+2. Optionally bind GCP gateway back to loopback only if tunnel is healthy
+3. Re-test:
+   - `curl -k https://gcp.leevo.top/health`
+   - Agent alert post via domain
+   - real Google Chat event via domain
+4. Remove temporary public-IP fallback note from docs
