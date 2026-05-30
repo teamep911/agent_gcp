@@ -146,6 +146,10 @@
     .st-system{background:rgba(100,100,100,.15);color:var(--text-muted);border:1px solid var(--border)}
     .cmd-code{font-family:'Courier New',monospace;font-size:11px;color:var(--orange)}
 
+
+    /* ── Flow board ── */
+    .flow-board-wrap{display:grid;gap:14px;margin-bottom:14px}.flow-map{display:grid;grid-template-columns:repeat(7,minmax(90px,1fr));gap:10px;align-items:center}.flow-node{min-height:82px;padding:12px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(180deg,var(--bg-card2),rgba(28,35,48,.78));display:flex;flex-direction:column;justify-content:center;text-align:center;position:relative;overflow:hidden}.flow-node::after{content:'';position:absolute;inset:-30%;opacity:0;background:radial-gradient(circle,currentColor 0%,transparent 58%);transition:opacity .25s ease}.flow-node.active::after{opacity:.18}.flow-node small{font-size:11px;color:var(--text-muted)}.flow-node strong{font-size:13px;margin-top:6px}.flow-node.external{color:#cbd5e1}.flow-node.backend{color:var(--green)}.flow-node.gateway{color:var(--yellow)}.flow-node.db{color:var(--purple)}.flow-node.cyan-node{color:var(--cyan)}.flow-arrow{height:2px;background:linear-gradient(90deg,transparent,#334155,transparent);position:relative}.flow-arrow::after{content:'';position:absolute;right:0;top:-4px;border-left:8px solid #475569;border-top:5px solid transparent;border-bottom:5px solid transparent}.flow-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);margin:8px 0 16px}.flow-legend span{display:flex;align-items:center;gap:6px}.flow-legend i{width:10px;height:10px;border-radius:50%;display:inline-block}.flow-track-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.flow-step-list{padding:12px;display:grid;gap:10px}.flow-step{border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--bg-card2);display:grid;grid-template-columns:16px 1fr;gap:10px}.flow-step-dot{width:12px;height:12px;border-radius:50%;margin-top:3px;background:var(--text-dim)}.flow-step.running .flow-step-dot{background:var(--accent);box-shadow:0 0 18px rgba(56,139,253,.9)}.flow-step.passed .flow-step-dot{background:var(--green);box-shadow:0 0 14px rgba(63,185,80,.8)}.flow-step.failed .flow-step-dot{background:var(--red);box-shadow:0 0 14px rgba(248,81,73,.8)}.flow-step.manual_verify .flow-step-dot{background:var(--yellow);box-shadow:0 0 14px rgba(210,153,34,.8)}.flow-step-title{font-size:12px;font-weight:700}.flow-step-detail{margin-top:4px;font-size:11px;color:var(--text-muted);white-space:pre-wrap}.flow-endpoint{padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg-base);margin-bottom:10px}.flow-endpoint small{display:block;color:var(--text-muted);margin-bottom:4px}.flow-endpoint code{font-size:11px;color:var(--cyan);word-break:break-all}.flow-live{color:var(--green)}
+
     /* ── Modal ── */
     .modal-backdrop{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px}
     .modal-backdrop.open{display:flex}
@@ -207,7 +211,7 @@
     </button>
     <div class="user-info">
       <span class="user-name">{{ user }}</span>
-      <a href="/auth/logout" class="logout-btn">Logout</a>
+      <a href="/logout" class="logout-btn">Logout</a>
     </div>
   </div>
 </nav>
@@ -219,6 +223,9 @@
   </button>
   <button class="tab-btn" onclick="switchTab('audit',this)">
     Audit Log <span class="tab-badge" id="tabBadgeAudit">0</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('flow',this)">
+    Flow Test Board <span class="tab-badge" id="tabBadgeFlow">LIVE</span>
   </button>
 </div>
 
@@ -360,6 +367,63 @@
 
 </div>
 </div><!-- /tab-audit -->
+
+<div id="tab-flow" class="tab-panel">
+<div class="container">
+  <div class="section-title">End-to-End Flow Test Board</div>
+  <div class="charts-grid" style="grid-template-columns:340px 1fr;align-items:start">
+    <div class="chart-card">
+      <div class="chart-header"><div><div class="chart-title">Flow Runtime</div><div class="chart-subtitle" id="flowUpdatedAt">Waiting for data...</div></div></div>
+      <div id="flowEndpoints"></div>
+      <div style="margin-top:14px;font-size:12px;color:var(--text-muted);line-height:1.6">
+        <strong style="color:var(--text-main)">Notes / blockers</strong>
+        <ul id="flowNotes" style="padding-left:18px;margin-top:8px"></ul>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header"><div><div class="chart-title">Realtime Flow Map</div><div class="chart-subtitle">Active step will glow while the test runner is executing</div></div><button class="refresh-btn" onclick="loadFlowBoard()">Refresh Flow</button></div>
+      <div class="flow-board-wrap">
+        <div class="flow-map" id="flowMapA">
+          <div class="flow-node external" data-node-step="a3"><small>Source</small><strong>OEM Event</strong></div>
+          <div class="flow-arrow"></div>
+          <div class="flow-node backend" data-node-step="a4"><small>openclaw</small><strong>Agent 2020</strong></div>
+          <div class="flow-arrow"></div>
+          <div class="flow-node db" data-node-step="a4"><small>storage</small><strong>Incident DB</strong></div>
+          <div class="flow-arrow"></div>
+          <div class="flow-node gateway" data-node-step="a6"><small>gcp</small><strong>Gateway 2222</strong></div>
+        </div>
+        <div class="flow-map" id="flowMapB">
+          <div class="flow-node external" data-node-step="b2"><small>Source</small><strong>Google Chat Event</strong></div>
+          <div class="flow-arrow"></div>
+          <div class="flow-node gateway" data-node-step="b3"><small>gcp</small><strong>Gateway 2222</strong></div>
+          <div class="flow-arrow"></div>
+          <div class="flow-node backend" data-node-step="b5"><small>openclaw</small><strong>Agent 2020</strong></div>
+          <div class="flow-arrow"></div>
+          <div class="flow-node cyan-node" data-node-step="b5"><small>response</small><strong>job_id Accepted</strong></div>
+        </div>
+      </div>
+      <div class="flow-legend">
+        <span><i style="background:var(--text-dim)"></i>Pending</span>
+        <span><i style="background:var(--accent)"></i>Running</span>
+        <span><i style="background:var(--green)"></i>Passed</span>
+        <span><i style="background:var(--red)"></i>Failed</span>
+        <span><i style="background:var(--yellow)"></i>Manual verify</span>
+      </div>
+      <div class="flow-track-grid">
+        <div class="table-card">
+          <div class="table-toolbar"><div class="table-toolbar-title">Track A — OEM -> Agent -> Gateway -> Google Chat</div></div>
+          <div class="flow-step-list" id="flowTrackA"></div>
+        </div>
+        <div class="table-card">
+          <div class="table-toolbar"><div class="table-toolbar-title">Track B — Google Chat -> Gateway -> Agent</div></div>
+          <div class="flow-step-list" id="flowTrackB"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /tab-flow -->
+
 
 <!-- ── Incident Modal ──────────────────────────────────────────────────────── -->
 <div class="modal-backdrop" id="modalBackdrop" onclick="closeModalBackdrop(event)">
@@ -631,6 +695,49 @@ function renderAuditTable(){
   document.getElementById('auditInfo').textContent=`Hien thi ${AUDIT_FILTERED.length} / ${AUDIT_DATA.length} entries`;
 }
 
+
+let flowAutoTimer=null;
+
+function renderFlowStep(step){
+  return `<div class="flow-step ${step.status}" data-step="${step.id}"><div class="flow-step-dot"></div><div><div class="flow-step-title">${step.id.toUpperCase()} — ${escapeHtml(step.label||'')}</div><div class="flow-step-detail">${escapeHtml(step.detail||'')}</div></div></div>`;
+}
+
+function escapeHtml(v){return String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
+
+function setFlowNodeGlow(activeIds){
+  document.querySelectorAll('[data-node-step]').forEach(el=>{
+    el.classList.toggle('active', activeIds.has(el.dataset.nodeStep));
+  });
+}
+
+async function loadFlowBoard(){
+  try{
+    const r=await fetch('/dashboard/flow-status?ts='+Date.now(),{credentials:'include'});
+    if(r.status===401){window.location.href='/auth/login';return;}
+    if(!r.ok){showToast('Flow status error: '+r.status);return;}
+    const d=await r.json();
+    document.getElementById('flowUpdatedAt').textContent='Updated: '+(d.updated_at||'n/a');
+    const ep=document.getElementById('flowEndpoints');
+    ep.innerHTML='';
+    Object.entries(d.environment||{}).forEach(([k,v])=>{
+      ep.innerHTML += `<div class="flow-endpoint"><small>${escapeHtml(k)}</small><code>${escapeHtml(v)}</code></div>`;
+    });
+    const notes=document.getElementById('flowNotes');
+    notes.innerHTML=(d.notes||[]).map(n=>`<li>${escapeHtml(n)}</li>`).join('');
+    const tracks=(d.tracks||[]);
+    const ta=tracks.find(t=>t.id==='track_a')||{steps:[]};
+    const tb=tracks.find(t=>t.id==='track_b')||{steps:[]};
+    document.getElementById('flowTrackA').innerHTML=ta.steps.map(renderFlowStep).join('');
+    document.getElementById('flowTrackB').innerHTML=tb.steps.map(renderFlowStep).join('');
+    const activeIds=new Set();
+    [...ta.steps,...tb.steps].forEach(s=>{ if(s.status==='running') activeIds.add(s.id); });
+    setFlowNodeGlow(activeIds);
+    const hasRunning=activeIds.size>0;
+    document.getElementById('tabBadgeFlow').textContent=hasRunning?'RUN':'LIVE';
+    document.getElementById('tabBadgeFlow').className='tab-badge'+(hasRunning?'':'');
+  }catch(e){showToast('Flow load failed: '+e.message);}
+}
+
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function showToast(msg){
   const t=document.getElementById('toast');t.textContent=msg;t.style.display='flex';t.classList.remove('fade-out');
@@ -659,6 +766,7 @@ function startArTimer(){
 async function doRefresh(){
   const btn=document.getElementById('refreshBtn');btn.classList.add('spinning');
   await fetchDashboardData(parseInt(document.getElementById('daySelect').value)||7);
+  await loadFlowBoard();
   btn.classList.remove('spinning');
   showToast('Da lam moi - '+new Date().toLocaleTimeString('vi-VN'));
   if(arEnabled)arSeconds=REFRESH_INTERVAL;
@@ -666,6 +774,8 @@ async function doRefresh(){
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 fetchDashboardData(7);
+loadFlowBoard();
+setInterval(loadFlowBoard,2000);
 startArTimer();
 </script>
 </body>

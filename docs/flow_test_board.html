@@ -28,7 +28,7 @@
 </head>
 <body>
   <div class="wrap">
-    <section class="hero"><div class="eyebrow">Live Test Board</div><h1>Agent Monitor End-to-End Flow Test</h1><div class="sub">This board shows where the current test run is, which checkpoint passed/failed, and what still needs manual verification.</div><div class="meta"><div class="pill">Updated: 2026-05-31T03:35:43+07:00</div><div class="pill">Fallback path: public IP 118.69.205.10:2222</div><div class="pill">Preferred final path: gcp.leevo.top</div></div></section>
+    <section class="hero"><div class="eyebrow">Live Test Board</div><h1>Agent Monitor End-to-End Flow Test</h1><div class="sub">This board shows where the current test run is, which checkpoint passed/failed, and what still needs manual verification.</div><div class="meta"><div class="pill">Updated: 2026-05-31T03:50:57+07:00</div><div class="pill">Fallback path: public IP 118.69.205.10:2222</div><div class="pill">Preferred final path: gcp.leevo.top</div></div></section>
     <section class="grid"><div class="stack"><div class="card"><h2>Runtime Endpoints</h2><div class="endpoint"><small>agent_host</small><code>openclaw</code></div><div class="endpoint"><small>agent_health</small><code>http://127.0.0.1:2020/health</code></div><div class="endpoint"><small>agent_oem_webhook</small><code>http://127.0.0.1:2020/webhook/oem</code></div><div class="endpoint"><small>agent_google_chat_command</small><code>http://127.0.0.1:2020/google-chat/command</code></div><div class="endpoint"><small>gateway_host</small><code>gcp</code></div><div class="endpoint"><small>gateway_health_public</small><code>http://118.69.205.10:2222/health</code></div><div class="endpoint"><small>gateway_alerts_public</small><code>http://118.69.205.10:2222/agent/alerts</code></div><div class="endpoint"><small>gateway_google_chat_events_public</small><code>http://118.69.205.10:2222/google-chat/events</code></div></div><div class="card"><h2>Notes / Blockers</h2><ul class="notes"><li>Current runtime uses temporary public IP fallback on 118.69.205.10:2222.</li><li>Preferred final endpoint remains https://gcp.leevo.top when DNS/tunnel is healthy.</li></ul></div><div class="card"><h2>Status Legend</h2><div class="legend"><span><i style="background:#475569"></i> Pending</span><span><i style="background:#38bdf8"></i> Running</span><span><i style="background:#22c55e"></i> Passed</span><span><i style="background:#ef4444"></i> Failed</span><span><i style="background:#f59e0b"></i> Manual verify</span></div><div class="footer-note">Run <code>scripts/run_flow_tests.py</code> to refresh this board.</div></div></div>
     <div class="stack"><div class="card"><h2>Flow Map</h2><div class="flow"><div class="node external"><small>Source</small><strong>OEM Event</strong></div><div class="arrow"></div><div class="node backend"><small>openclaw</small><strong>Agent 2020</strong></div><div class="arrow"></div><div class="node db"><small>storage</small><strong>Incident DB</strong></div><div class="arrow"></div><div class="node gateway"><small>gcp</small><strong>Gateway 2222</strong></div></div><div class="flow"><div class="node external"><small>Source</small><strong>Google Chat Event</strong></div><div class="arrow"></div><div class="node gateway"><small>gcp</small><strong>Gateway 2222</strong></div><div class="arrow"></div><div class="node backend"><small>openclaw</small><strong>Agent 2020</strong></div><div class="arrow"></div><div class="node frontend"><small>response</small><strong>job_id Accepted</strong></div></div></div>
     <div class="card track"><h3>Track A — OEM -> Agent -> Gateway -> Google Chat</h3><div class="steps"><div class="step passed" data-step="a1">
@@ -42,7 +42,7 @@
     </div><div class="step passed" data-step="a3">
       <div class="dot"></div>
       <div><div class="step-title">A3 — Send signed synthetic OEM alert to Agent</div>
-      <div class="detail">{&quot;status&quot;:&quot;accepted&quot;,&quot;incident_id&quot;:83,&quot;gcp_sent&quot;:true}</div></div>
+      <div class="detail">{&quot;status&quot;:&quot;accepted&quot;,&quot;incident_id&quot;:86,&quot;gcp_sent&quot;:true}</div></div>
     </div><div class="step passed" data-step="a4">
       <div class="dot"></div>
       <div><div class="step-title">A4 — Verify Agent rule match and incident save</div>
@@ -66,11 +66,11 @@
     </div><div class="step passed" data-step="b2">
       <div class="dot"></div>
       <div><div class="step-title">B2 — Send synthetic Google Chat event to Gateway</div>
-      <div class="detail">{&quot;text&quot;:&quot;✅ Accepted command `/status flex`. job_id=gchat-00d7caab5206&quot;}</div></div>
+      <div class="detail">{&quot;text&quot;:&quot;✅ Accepted command `/status flex`. job_id=gchat-d4ea1f01a787&quot;}</div></div>
     </div><div class="step passed" data-step="b3">
       <div class="dot"></div>
       <div><div class="step-title">B3 — Verify Gateway authorization accepted user/domain</div>
-      <div class="detail">{&quot;text&quot;:&quot;✅ Accepted command `/status flex`. job_id=gchat-00d7caab5206&quot;}</div></div>
+      <div class="detail">{&quot;text&quot;:&quot;✅ Accepted command `/status flex`. job_id=gchat-d4ea1f01a787&quot;}</div></div>
     </div><div class="step passed" data-step="b4">
       <div class="dot"></div>
       <div><div class="step-title">B4 — Verify Gateway forwarded command to Agent</div>
@@ -78,7 +78,7 @@
     </div><div class="step passed" data-step="b5">
       <div class="dot"></div>
       <div><div class="step-title">B5 — Verify Agent accepted command and returned job_id</div>
-      <div class="detail">{&quot;text&quot;:&quot;✅ Accepted command `/status flex`. job_id=gchat-00d7caab5206&quot;}</div></div>
+      <div class="detail">{&quot;text&quot;:&quot;✅ Accepted command `/status flex`. job_id=gchat-d4ea1f01a787&quot;}</div></div>
     </div></div></div></div></section>
   </div>
 </body>

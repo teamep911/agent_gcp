@@ -1,6 +1,6 @@
 {
   "title": "Agent Monitor End-to-End Flow Test",
-  "updated_at": "2026-05-31T03:35:43+07:00",
+  "updated_at": "2026-05-31T03:50:57+07:00",
   "environment": {
     "agent_host": "openclaw",
     "agent_health": "http://127.0.0.1:2020/health",
@@ -36,7 +36,7 @@
           "id": "a3",
           "label": "Send signed synthetic OEM alert to Agent",
           "status": "passed",
-          "detail": "{\"status\":\"accepted\",\"incident_id\":83,\"gcp_sent\":true}"
+          "detail": "{\"status\":\"accepted\",\"incident_id\":86,\"gcp_sent\":true}"
         },
         {
           "id": "a4",
@@ -78,13 +78,13 @@
           "id": "b2",
           "label": "Send synthetic Google Chat event to Gateway",
           "status": "passed",
-          "detail": "{\"text\":\"✅ Accepted command `/status flex`. job_id=gchat-00d7caab5206\"}"
+          "detail": "{\"text\":\"✅ Accepted command `/status flex`. job_id=gchat-d4ea1f01a787\"}"
         },
         {
           "id": "b3",
           "label": "Verify Gateway authorization accepted user/domain",
           "status": "passed",
-          "detail": "{\"text\":\"✅ Accepted command `/status flex`. job_id=gchat-00d7caab5206\"}"
+          "detail": "{\"text\":\"✅ Accepted command `/status flex`. job_id=gchat-d4ea1f01a787\"}"
         },
         {
           "id": "b4",
@@ -96,7 +96,7 @@
           "id": "b5",
           "label": "Verify Agent accepted command and returned job_id",
           "status": "passed",
-          "detail": "{\"text\":\"✅ Accepted command `/status flex`. job_id=gchat-00d7caab5206\"}"
+          "detail": "{\"text\":\"✅ Accepted command `/status flex`. job_id=gchat-d4ea1f01a787\"}"
         }
       ]
     }

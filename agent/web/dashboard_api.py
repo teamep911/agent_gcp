@@ -4,6 +4,7 @@ asyncpg-based, adapted từ v1 dashboard_api.py.
 Schema mới: incidents + audit_log tables.
 """
 
+import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -22,6 +23,7 @@ router = APIRouter()
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "../templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
+FLOW_STATUS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../docs/flow_test_status.json'))
 
 _DB_LABEL = {
     "oracle_database": "Oracle DB",
@@ -189,3 +191,13 @@ async def audit_data(limit: int = 50, user: str = Depends(require_user)):
             "pending": pending, "timeout": timeout,
         },
     })
+
+
+@router.get('/dashboard/flow-status')
+async def dashboard_flow_status(user: str = Depends(require_user)):
+    try:
+        with open(FLOW_STATUS_PATH, 'r', encoding='utf-8') as f:
+            payload = json.load(f)
+        return JSONResponse(payload)
+    except FileNotFoundError:
+        return JSONResponse({'detail': 'flow_status_not_found'}, status_code=404)

@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
 import subprocess
 import time
 import urllib.request
@@ -17,6 +18,7 @@ RENDERER = ROOT / 'scripts' / 'render_flow_board.py'
 PYTHON = ROOT / '.venv' / 'bin' / 'python'
 AGENT_JOURNAL_CMD = ['sudo', 'journalctl', '-u', 'agent-monitor.service', '-n', '120', '--no-pager']
 GCP_LOG_CMD = "tail -n 120 /u01/app/ggchat_app/logs/gateway.err.log 2>/dev/null || true"
+STEP_DELAY = float(os.getenv('FLOW_TEST_STEP_DELAY', '0'))
 
 
 def load_env(path: Path) -> dict[str, str]:
@@ -51,6 +53,8 @@ def set_step(data: dict, step_id: str, status: str, detail: str = '') -> None:
                 step['status'] = status
                 step['detail'] = detail
     save_status(data)
+    if status == 'running' and STEP_DELAY > 0:
+        time.sleep(STEP_DELAY)
 
 
 def reset_all(data: dict) -> None:
