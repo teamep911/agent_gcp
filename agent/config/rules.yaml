@@ -1,0 +1,122 @@
+# ============================================================
+# Monitor_v2 — Rule Engine & RCA Configuration
+# Mỗi rule định nghĩa: điều kiện match → action → RCA template
+# ============================================================
+
+rules:
+
+  # -----------------------------------------------------------
+  # CPU
+  # -----------------------------------------------------------
+  - id: cpu_critical_90
+    name: "CPU Critical >= 90%"
+    description: "CPU utilization đạt mức critical từ 90% trở lên"
+    match:
+      metric_name: "cpuUtilization"
+      severity: ["WARNING", "CRITICAL"]
+      metric_value_min: 90
+    rca:
+      summary: "CPU >= 90%. Khả năng cao đang có SQL tiêu thụ CPU lớn, parallel query, batch/job peak hoặc nghẽn tài nguyên hệ thống. Ưu tiên kiểm tra top SQL và tình trạng blocking nếu kéo dài."
+      check_commands:
+        - get_ash_top_sql
+        - get_blocking_locks
+    notification:
+      priority: "HIGH"
+      mention_approver: true
+
+  - id: cpu_high_80
+    name: "CPU High >= 80%"
+    description: "CPU utilization đạt mức cao từ 80% trở lên"
+    match:
+      metric_name: "cpuUtilization"
+      severity: ["WARNING", "CRITICAL"]
+      metric_value_min: 80
+    rca:
+      summary: "CPU >= 80%. Theo dõi sát top SQL, batch/job, parallel query và xu hướng tăng tải trước khi chạm ngưỡng critical."
+      check_commands:
+        - get_ash_top_sql
+        - get_blocking_locks
+    notification:
+      priority: "HIGH"
+      mention_approver: false
+
+  - id: cpu_warning_60
+    name: "CPU Warning >= 60%"
+    description: "CPU utilization cảnh báo từ 60% trở lên"
+    match:
+      metric_name: "cpuUtilization"
+      severity: ["WARNING", "CRITICAL"]
+      metric_value_min: 60
+    rca:
+      summary: "CPU >= 60%. Theo dõi thêm. Nếu xu hướng kéo dài, kiểm tra top SQL, batch/job và cân nhắc AWR/ASH nếu target có license."
+      check_commands:
+        - get_target_status
+    notification:
+      priority: "MEDIUM"
+      mention_approver: false
+
+  # -----------------------------------------------------------
+  # Tablespace
+  # -----------------------------------------------------------
+  - id: tablespace_critical
+    name: "Tablespace Full Critical"
+    description: "Tablespace sắp đầy — < 10% còn trống"
+    match:
+      metric_name: "tablespaceUsedPercent"
+      severity: "CRITICAL"
+    rca:
+      summary: "Tablespace gần đầy. Kiểm tra: segment lớn bất thường, undo retention cao, index rebuild chưa xong."
+      check_commands:
+        - get_tablespace_usage
+    notification:
+      priority: "HIGH"
+      mention_approver: true   # cần DBA lead chú ý
+
+  # -----------------------------------------------------------
+  # Sessions
+  # -----------------------------------------------------------
+  - id: session_usage_critical
+    name: "Session Usage Critical"
+    description: "Session utilization vượt 90%"
+    match:
+      metric_name: "sessionUsagePercent"
+      severity: ["WARNING", "CRITICAL"]
+      metric_value_min: 90
+    rca:
+      summary: "Session usage > 90%. Kiểm tra app connection pool, session leak, inactive sessions giữ resource, job/batch tăng đột biến. Nếu sát limit, cân nhắc tăng SESSIONS/PROCESSES sau khi xác nhận capacity."
+      check_commands:
+        - get_target_status
+    notification:
+      priority: "HIGH"
+      mention_approver: true
+
+  # -----------------------------------------------------------
+  # Blocking Locks
+  # -----------------------------------------------------------
+  - id: blocking_lock
+    name: "Blocking Lock Detected"
+    description: "Có session bị block"
+    match:
+      metric_name: "userBlockedSessionCount"
+      severity: ["WARNING", "CRITICAL"]
+    rca:
+      summary: "Blocking lock — kiểm tra session giữ lock và SQL đang chạy. Xem xét kill session nếu block > 5 phút."
+      check_commands:
+        - get_blocking_locks
+    notification:
+      priority: "HIGH"
+
+  # -----------------------------------------------------------
+  # OEM Agent unreachable
+  # -----------------------------------------------------------
+  - id: agent_unreachable
+    name: "OEM Agent Unreachable"
+    description: "OEM mất kết nối đến target agent"
+    match:
+      metric_name: "agentStatus"
+      severity: "CRITICAL"
+    rca:
+      summary: "Agent unreachable — kiểm tra: network, agent process trên target, firewall port 3872."
+    notification:
+      priority: "HIGH"
+      mention_approver: true

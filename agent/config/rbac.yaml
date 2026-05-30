@@ -1,0 +1,62 @@
+# ============================================================
+# Monitor_v2 — RBAC Configuration
+# Chỉnh sửa file này để quản lý quyền user.
+# Agent tự reload khi file thay đổi (inotify watch).
+# ============================================================
+
+roles:
+  viewer:
+    description: "Xem incident, alert, summary — chỉ đọc"
+    allowed_commands:
+      - get_incidents
+      - get_alert_summary
+      - get_targets
+      - get_target_status
+    requires_approval: []
+
+  dba_operator:
+    description: "Xem AWR summary, ASH top SQL, tablespace — không export full"
+    allowed_commands:
+      - get_incidents
+      - get_alert_summary
+      - get_targets
+      - get_target_status
+      - get_tablespace_usage
+      - get_awr_summary        # chỉ chạy được nếu target có diagnostic_pack = true
+      - get_ash_top_sql        # chỉ chạy được nếu target có diagnostic_pack = true
+      - get_session_count
+      - get_blocking_locks
+    requires_approval: []
+
+  dba_lead:
+    description: "Full access — export AWR/ASH report, kill session (cần approve)"
+    allowed_commands:
+      - "*"                    # kế thừa tất cả lệnh của dba_operator
+    requires_approval:
+      - export_awr_report      # export file HTML AWR — nặng, cần approve
+      - export_ash_report
+      - kill_session           # nguy hiểm — luôn cần approve
+      - restart_oem_agent      # tác động đến monitoring — cần approve
+
+  approver:
+    description: "Có quyền approve lệnh nặng của dba_lead"
+    can_approve: true
+    allowed_commands: []       # approver không cần thêm command, chỉ có quyền approve
+
+# ============================================================
+# Users — Thêm telegram_id ứng với role
+# Một user có thể có nhiều role (union của tất cả quyền)
+# ============================================================
+users:
+  - telegram_id: "1287361144"
+    name: "Nam Pham"
+    roles:
+      - dba_lead
+      - approver
+    comment: "DBA Lead + Approver"
+
+  # Thêm user mới theo mẫu:
+  # - telegram_id: "123456789"
+  #   name: "DBA Junior"
+  #   roles:
+  #     - dba_operator

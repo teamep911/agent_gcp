@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Monitor v2 — Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-base:    #0d1117; --bg-card:  #161b22; --bg-card2: #1c2330;
+      --border:     #30363d; --text-main:#e6edf3; --text-muted:#8b949e; --text-dim:#484f58;
+      --accent:     #388bfd; --accent-glow:#1f6feb33;
+      --green: #3fb950; --yellow:#d29922; --orange:#f0883e;
+      --red:   #f85149; --purple:#bc8cff; --cyan:#57c4e5;
+      --radius: 10px; --shadow: 0 4px 24px rgba(0,0,0,.4);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg-base);color:var(--text-main);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;min-height:100vh}
+
+    /* ── Topbar ── */
+    .topbar{display:flex;align-items:center;justify-content:space-between;background:var(--bg-card);border-bottom:1px solid var(--border);padding:0 24px;height:56px;position:sticky;top:0;z-index:200}
+    .topbar-brand{display:flex;align-items:center;gap:10px}
+    .topbar-brand .logo{width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff}
+    .topbar-brand span{font-weight:700;font-size:15px}
+    .topbar-brand small{font-size:11px;color:var(--text-muted);margin-left:4px}
+    .topbar-right{display:flex;align-items:center;gap:12px}
+    .badge-env{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent)}
+    .clock{font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+    .user-info{display:flex;align-items:center;gap:8px;padding-left:12px;border-left:1px solid var(--border)}
+    .user-name{font-size:12px;color:var(--text-muted)}
+    .logout-btn{font-size:11px;color:var(--text-muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:6px;transition:all .2s}
+    .logout-btn:hover{color:var(--red);border-color:var(--red)}
+    .auto-refresh-wrap{display:flex;align-items:center;gap:8px;background:var(--bg-card2);border:1px solid var(--border);border-radius:8px;padding:5px 12px}
+    .ar-toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);cursor:pointer;user-select:none}
+    .ar-toggle input[type=checkbox]{display:none}
+    .ar-switch{width:30px;height:16px;background:var(--border);border-radius:8px;position:relative;transition:background .2s}
+    .ar-switch::after{content:'';position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:left .2s}
+    .ar-toggle input:checked~.ar-switch{background:var(--green)}
+    .ar-toggle input:checked~.ar-switch::after{left:16px}
+    .ar-countdown{font-size:11px;font-weight:700;color:var(--green);min-width:28px;text-align:right}
+    .ar-countdown.urgent{color:var(--yellow)}
+    .ar-bar-wrap{width:60px;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+    .ar-bar{height:100%;background:var(--green);border-radius:2px;transition:width 1s linear,background .3s}
+    .refresh-btn{background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:5px;transition:all .2s}
+    .refresh-btn:hover{border-color:var(--accent);color:var(--accent)}
+    .refresh-btn.spinning svg{animation:spin .6s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ── Tabs ── */
+    .tab-bar{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--bg-card);padding:0 24px;position:sticky;top:56px;z-index:190}
+    .tab-btn{background:none;border:none;color:var(--text-muted);padding:12px 20px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;gap:7px}
+    .tab-btn:hover{color:var(--text-main)}
+    .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+    .tab-badge{font-size:10px;padding:1px 6px;border-radius:10px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent)}
+    .tab-badge.red{background:rgba(248,81,73,.12);color:var(--red);border-color:rgba(248,81,73,.3)}
+    .tab-panel{display:none}.tab-panel.active{display:block}
+
+    /* ── Layout ── */
+    .container{padding:20px 24px;max-width:1600px;margin:auto}
+    .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-muted);margin-bottom:12px;margin-top:24px;display:flex;align-items:center;gap:8px}
+    .section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+    /* ── KPI cards ── */
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px}
+    .kpi-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;position:relative;overflow:hidden;transition:transform .15s,box-shadow .15s}
+    .kpi-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+    .kpi-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:var(--radius) 0 0 var(--radius)}
+    .kpi-card.blue::before{background:var(--accent)} .kpi-card.red::before{background:var(--red)}
+    .kpi-card.orange::before{background:var(--orange)} .kpi-card.yellow::before{background:var(--yellow)}
+    .kpi-card.green::before{background:var(--green)} .kpi-card.purple::before{background:var(--purple)}
+    .kpi-card.cyan::before{background:var(--cyan)}
+    .kpi-label{font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+    .kpi-value{font-size:32px;font-weight:800;margin:6px 0 4px;line-height:1;font-variant-numeric:tabular-nums}
+    .kpi-card.blue .kpi-value{color:var(--accent)} .kpi-card.red .kpi-value{color:var(--red)}
+    .kpi-card.orange .kpi-value{color:var(--orange)} .kpi-card.yellow .kpi-value{color:var(--yellow)}
+    .kpi-card.green .kpi-value{color:var(--green)} .kpi-card.purple .kpi-value{color:var(--purple)}
+    .kpi-card.cyan .kpi-value{color:var(--cyan)}
+    .kpi-delta{font-size:11px} .kpi-delta.up{color:var(--red)} .kpi-delta.down{color:var(--green)} .kpi-delta.flat{color:var(--text-muted)}
+    .kpi-icon{position:absolute;right:14px;top:14px;font-size:22px;opacity:.18}
+
+    /* ── Charts ── */
+    .charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+    @media(max-width:900px){.charts-grid{grid-template-columns:1fr}}
+    .chart-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+    .chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .chart-title{font-size:13px;font-weight:700} .chart-subtitle{font-size:11px;color:var(--text-muted)}
+    .chart-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+    .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted)}
+    .legend-dot{width:8px;height:8px;border-radius:50%}
+    .filter-select{background:var(--bg-base);border:1px solid var(--border);border-radius:6px;color:var(--text-muted);padding:5px 8px;font-size:12px;outline:none;cursor:pointer}
+    .filter-select:focus{border-color:var(--accent)}
+
+    /* ── Incident table ── */
+    .bottom-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:12px}
+    @media(max-width:1100px){.bottom-grid{grid-template-columns:1fr}}
+    .table-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+    .table-toolbar{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+    .table-toolbar-title{font-size:13px;font-weight:700;flex:1;min-width:120px}
+    .search-box{background:var(--bg-base);border:1px solid var(--border);border-radius:6px;color:var(--text-main);padding:5px 10px;font-size:12px;width:200px;outline:none;transition:border-color .2s}
+    .search-box:focus{border-color:var(--accent)}
+    .csv-btn{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.35);color:var(--green);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px;transition:all .2s}
+    .csv-btn:hover{background:rgba(63,185,80,.2)}
+    table{width:100%;border-collapse:collapse}
+    thead tr{background:var(--bg-card2)}
+    th{padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);white-space:nowrap;cursor:pointer;user-select:none}
+    th:hover{color:var(--text-main)}
+    td{padding:9px 14px;font-size:12px;vertical-align:middle;border-top:1px solid var(--border)}
+    tbody tr{transition:background .1s;cursor:pointer} tbody tr:hover{background:var(--bg-card2)}
+    .sev-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.5px}
+    .sev-critical{background:rgba(248,81,73,.15);color:var(--red);border:1px solid rgba(248,81,73,.3)}
+    .sev-warning{background:rgba(210,153,34,.15);color:var(--yellow);border:1px solid rgba(210,153,34,.3)}
+    .sev-advisory,.sev-info{background:rgba(56,139,253,.15);color:var(--accent);border:1px solid rgba(56,139,253,.3)}
+    .sev-clear{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3)}
+    .target-name{font-weight:600} .target-db{font-size:11px;color:var(--text-muted)}
+    .table-footer{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted)}
+    .pagination{display:flex;gap:4px}
+    .page-btn{background:var(--bg-base);border:1px solid var(--border);color:var(--text-muted);border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11px;transition:all .15s}
+    .page-btn:hover,.page-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+
+    /* ── Timeline ── */
+    .timeline-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column}
+    .timeline-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .timeline-header-title{font-size:13px;font-weight:700}
+    .timeline-body{padding:8px 16px;overflow-y:auto;max-height:440px;flex:1}
+    .tl-item{display:flex;gap:12px;padding:10px 0;position:relative}
+    .tl-item:not(:last-child)::after{content:'';position:absolute;left:11px;top:28px;bottom:-10px;width:1px;background:var(--border)}
+    .tl-dot{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px}
+    .tl-dot.crit{background:rgba(248,81,73,.2);color:var(--red);border:1.5px solid var(--red)}
+    .tl-dot.warn{background:rgba(210,153,34,.2);color:var(--yellow);border:1.5px solid var(--yellow)}
+    .tl-dot.info{background:rgba(56,139,253,.2);color:var(--accent);border:1.5px solid var(--accent)}
+    .tl-dot.ok{background:rgba(63,185,80,.2);color:var(--green);border:1.5px solid var(--green)}
+    .tl-content{flex:1;min-width:0}
+    .tl-msg{font-size:12px;font-weight:600;line-height:1.4}
+    .tl-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
+    .tl-target{color:var(--accent);font-size:11px}
+    .tl-time{font-size:10px;color:var(--text-dim);margin-top:4px}
+
+    /* ── Audit Log ── */
+    .audit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+    .status-pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;letter-spacing:.4px}
+    .st-executed{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3)}
+    .st-pending{background:rgba(210,153,34,.15);color:var(--yellow);border:1px solid rgba(210,153,34,.3)}
+    .st-approved{background:rgba(56,139,253,.15);color:var(--accent);border:1px solid rgba(56,139,253,.3)}
+    .st-rejected,.st-failed{background:rgba(248,81,73,.15);color:var(--red);border:1px solid rgba(248,81,73,.3)}
+    .st-timeout{background:rgba(188,140,255,.15);color:var(--purple);border:1px solid rgba(188,140,255,.3)}
+    .st-system{background:rgba(100,100,100,.15);color:var(--text-muted);border:1px solid var(--border)}
+    .cmd-code{font-family:'Courier New',monospace;font-size:11px;color:var(--orange)}
+
+    /* ── Modal ── */
+    .modal-backdrop{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px}
+    .modal-backdrop.open{display:flex}
+    .modal{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:640px;box-shadow:0 24px 80px rgba(0,0,0,.7);animation:modalIn .2s cubic-bezier(.34,1.56,.64,1);overflow:hidden}
+    @keyframes modalIn{from{opacity:0;transform:scale(.92) translateY(16px)}}
+    .modal-header{display:flex;align-items:flex-start;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--border);gap:12px}
+    .modal-title-wrap{flex:1;min-width:0}
+    .modal-id{font-size:11px;color:var(--text-muted);font-weight:600;margin-bottom:4px}
+    .modal-title{font-size:16px;font-weight:800;line-height:1.3;word-break:break-word}
+    .modal-close{background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:6px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;transition:all .15s}
+    .modal-close:hover{border-color:var(--red);color:var(--red)}
+    .modal-body{padding:20px 24px}
+    .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+    .modal-field{background:var(--bg-card2);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+    .modal-field-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:5px}
+    .modal-field-val{font-size:13px;font-weight:600}
+    .modal-full{grid-column:1/-1}
+    .modal-msg-box{background:var(--bg-base);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-size:12px;font-family:'Courier New',monospace;color:var(--orange);line-height:1.6;word-break:break-all;margin-bottom:18px}
+    .modal-actions{display:flex;gap:10px;justify-content:flex-end;padding-top:4px}
+    .btn{border-radius:7px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s;display:flex;align-items:center;gap:6px}
+    .btn-dismiss{background:none;border-color:var(--border);color:var(--text-muted)}
+    .btn-dismiss:hover{border-color:var(--text-main);color:var(--text-main)}
+
+    /* ── Toast ── */
+    .toast{position:fixed;bottom:24px;right:24px;z-index:2000;background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:12px 18px;font-size:13px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:flex;align-items:center;gap:10px;animation:toastIn .25s ease;pointer-events:none}
+    @keyframes toastIn{from{opacity:0;transform:translateY(12px)}}
+    .toast.fade-out{animation:toastOut .3s ease forwards}
+    @keyframes toastOut{to{opacity:0;transform:translateY(12px)}}
+    ::-webkit-scrollbar{width:5px;height:5px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  </style>
+</head>
+<body>
+
+<!-- ── Topbar ─────────────────────────────────────────────────────────────── -->
+<nav class="topbar">
+  <div class="topbar-brand">
+    <div class="logo">M</div>
+    <span>Monitor v2</span>
+    <small>Oracle OEM</small>
+  </div>
+  <div class="topbar-right">
+    <span class="badge-env">LAB ENV</span>
+    <span class="clock" id="clock">--:--:--</span>
+    <div class="auto-refresh-wrap">
+      <label class="ar-toggle">
+        <input type="checkbox" id="arToggle" checked onchange="toggleAutoRefresh(this.checked)"/>
+        <div class="ar-switch"></div>
+        <span>Auto</span>
+      </label>
+      <div class="ar-bar-wrap"><div class="ar-bar" id="arBar" style="width:100%"></div></div>
+      <div class="ar-countdown" id="arCountdown">30s</div>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" onclick="doRefresh()">
+      <svg id="refreshIcon" width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+        <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+      </svg>
+      Refresh
+    </button>
+    <div class="user-info">
+      <span class="user-name">{{ user }}</span>
+      <a href="/auth/logout" class="logout-btn">Logout</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Tab bar ──────────────────────────────────────────────────────────────── -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('incidents',this)">
+    Incidents <span class="tab-badge red" id="tabBadgeCrit">0</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('audit',this)">
+    Audit Log <span class="tab-badge" id="tabBadgeAudit">0</span>
+  </button>
+</div>
+
+<!-- ═══════════════════════════════ TAB: INCIDENTS ═══════════════════════════ -->
+<div id="tab-incidents" class="tab-panel active">
+<div class="container">
+
+  <div class="section-title">Tổng quan</div>
+  <div class="kpi-grid">
+    <div class="kpi-card blue">  <span class="kpi-icon">&#128202;</span><div class="kpi-label">Tong Incidents</div><div class="kpi-value" id="kpi-total">-</div>    <div class="kpi-delta flat" id="kpi-total-delta">Dang tai...</div></div>
+    <div class="kpi-card red">   <span class="kpi-icon">&#128308;</span><div class="kpi-label">Critical</div>      <div class="kpi-value" id="kpi-critical">-</div>  <div class="kpi-delta up" id="kpi-crit-delta">Uu tien cao nhat</div></div>
+    <div class="kpi-card orange"><span class="kpi-icon">&#9888;</span>   <div class="kpi-label">Warning</div>       <div class="kpi-value" id="kpi-warning">-</div>   <div class="kpi-delta flat">Can theo doi</div></div>
+    <div class="kpi-card yellow"><span class="kpi-icon">&#128276;</span> <div class="kpi-label">Advisory</div>      <div class="kpi-value" id="kpi-advisory">-</div>  <div class="kpi-delta flat">Thong tin</div></div>
+    <div class="kpi-card green"> <span class="kpi-icon">&#10003;</span>  <div class="kpi-label">Notified</div>      <div class="kpi-value" id="kpi-notified">-</div>  <div class="kpi-delta down">Da gui Telegram</div></div>
+    <div class="kpi-card purple"><span class="kpi-icon">&#127919;</span> <div class="kpi-label">DB Targets</div>    <div class="kpi-value" id="kpi-targets">-</div>   <div class="kpi-delta flat">Dang theo doi</div></div>
+  </div>
+
+  <div class="section-title">Phan tich bieu do</div>
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">Incidents theo ngay</div><div class="chart-subtitle">Phan loai theo severity</div></div>
+        <select class="filter-select" id="daySelect" onchange="reloadWithDays(this.value)">
+          <option value="7">7 ngay</option><option value="14">14 ngay</option><option value="30">30 ngay</option>
+        </select>
+      </div>
+      <canvas id="barChart" height="80"></canvas>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Critical</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div>Warning</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Advisory</div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header"><div><div class="chart-title">Phan bo Severity</div><div class="chart-subtitle">Tong hop hien tai</div></div></div>
+      <canvas id="doughnutChart" height="140"></canvas>
+    </div>
+  </div>
+
+  <div class="charts-grid" style="margin-top:12px">
+    <div class="chart-card">
+      <div class="chart-header"><div><div class="chart-title">Incidents theo DB Target</div><div class="chart-subtitle">Top targets nhieu incident nhat</div></div></div>
+      <canvas id="hbarChart" height="70"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header"><div><div class="chart-title">Xu huong 24 gio</div><div class="chart-subtitle">So incidents theo gio hom nay</div></div></div>
+      <canvas id="lineChart" height="140"></canvas>
+    </div>
+  </div>
+
+  <div class="section-title">Chi tiet su kien</div>
+  <div class="bottom-grid">
+    <div class="table-card">
+      <div class="table-toolbar">
+        <div class="table-toolbar-title">Danh sach Incidents</div>
+        <input class="search-box" type="text" placeholder="Tim target, message..." oninput="filterTable(this.value)"/>
+        <select class="filter-select" onchange="filterSeverity(this.value)">
+          <option value="">Tat ca severity</option>
+          <option value="CRITICAL">Critical</option><option value="WARNING">Warning</option>
+          <option value="ADVISORY">Advisory</option><option value="CLEAR">Clear</option>
+        </select>
+        <button class="csv-btn" onclick="exportCSV()">Export CSV</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="incidentTable">
+          <thead><tr>
+            <th onclick="sortTable('time')">Thoi gian</th>
+            <th onclick="sortTable('target')">Target</th>
+            <th onclick="sortTable('severity')">Severity</th>
+            <th>Metric / Value</th>
+            <th>Message</th>
+          </tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <span id="tableInfo">Dang tai...</span>
+        <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+
+    <div class="timeline-card">
+      <div class="timeline-header">
+        <div class="timeline-header-title">Alert Timeline</div>
+        <span style="font-size:11px;color:var(--text-muted)">Real-time</span>
+      </div>
+      <div class="timeline-body" id="timeline"><div style="padding:20px;color:var(--text-muted);font-size:12px">Dang tai...</div></div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+</div><!-- /tab-incidents -->
+
+<!-- ═══════════════════════════════ TAB: AUDIT LOG ═══════════════════════════ -->
+<div id="tab-audit" class="tab-panel">
+<div class="container">
+
+  <div class="section-title">Command Audit Statistics</div>
+  <div class="audit-grid">
+    <div class="kpi-card blue">  <span class="kpi-icon">&#128203;</span><div class="kpi-label">Tong commands</div><div class="kpi-value" id="aud-total">-</div><div class="kpi-delta flat">All time</div></div>
+    <div class="kpi-card green"> <span class="kpi-icon">&#10003;</span>  <div class="kpi-label">Executed</div>    <div class="kpi-value" id="aud-exec">-</div>  <div class="kpi-delta down">Thanh cong</div></div>
+    <div class="kpi-card red">   <span class="kpi-icon">&#10007;</span>  <div class="kpi-label">Failed</div>      <div class="kpi-value" id="aud-fail">-</div>  <div class="kpi-delta up">Loi</div></div>
+    <div class="kpi-card yellow"><span class="kpi-icon">&#9201;</span>   <div class="kpi-label">Timeout</div>     <div class="kpi-value" id="aud-timeout">-</div><div class="kpi-delta up">Het han approve</div></div>
+    <div class="kpi-card purple"><span class="kpi-icon">&#9203;</span>   <div class="kpi-label">Pending</div>     <div class="kpi-value" id="aud-pending">-</div><div class="kpi-delta flat">Cho approve</div></div>
+  </div>
+
+  <div class="section-title">Command History (50 gan nhat)</div>
+  <div class="table-card">
+    <div class="table-toolbar">
+      <div class="table-toolbar-title">Audit Log</div>
+      <input class="search-box" type="text" placeholder="Tim command, user..." oninput="filterAudit(this.value)"/>
+      <select class="filter-select" onchange="filterAuditStatus(this.value)">
+        <option value="">Tat ca status</option>
+        <option value="executed">Executed</option><option value="failed">Failed</option>
+        <option value="pending">Pending</option><option value="approved">Approved</option>
+        <option value="rejected">Rejected</option><option value="timeout">Timeout</option>
+      </select>
+      <button class="refresh-btn" onclick="loadAudit()">Refresh</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="auditTable">
+        <thead><tr>
+          <th>#</th>
+          <th>User</th>
+          <th>Command</th>
+          <th>Target</th>
+          <th>Status</th>
+          <th>Approved by</th>
+          <th>Created</th>
+          <th>Executed</th>
+        </tr></thead>
+        <tbody id="auditBody"></tbody>
+      </table>
+    </div>
+    <div class="table-footer">
+      <span id="auditInfo">Dang tai...</span>
+    </div>
+  </div>
+
+</div>
+</div><!-- /tab-audit -->
+
+<!-- ── Incident Modal ──────────────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeModalBackdrop(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <div class="modal-id" id="modalId">INC-001</div>
+        <div class="modal-title" id="modalTitle">-</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">x</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-grid">
+        <div class="modal-field"><div class="modal-field-label">Target</div><div class="modal-field-val" id="mTarget">-</div></div>
+        <div class="modal-field"><div class="modal-field-label">DB Type</div><div class="modal-field-val" id="mDb">-</div></div>
+        <div class="modal-field"><div class="modal-field-label">Severity</div><div class="modal-field-val" id="mSeverity">-</div></div>
+        <div class="modal-field"><div class="modal-field-label">Category</div><div class="modal-field-val" id="mCategory">-</div></div>
+        <div class="modal-field"><div class="modal-field-label">Metric</div><div class="modal-field-val" id="mMetric">-</div></div>
+        <div class="modal-field"><div class="modal-field-label">Value</div><div class="modal-field-val" id="mValue">-</div></div>
+        <div class="modal-field modal-full"><div class="modal-field-label">Thoi gian phat hien</div><div class="modal-field-val" id="mTime">-</div></div>
+      </div>
+      <div class="modal-field-label" style="margin-bottom:6px">Message / RCA</div>
+      <div class="modal-msg-box" id="mMessage">-</div>
+      <div class="modal-actions">
+        <button class="btn btn-dismiss" onclick="closeModal()">Dong</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let INCIDENTS=[], AUDIT_DATA=[], AUDIT_FILTERED=[];
+let _cBar=null,_cDot=null,_cHBar=null,_cLine=null;
+let filtered=[],currentPage=1;
+const PAGE_SIZE=10;
+let sortKey='time',sortDir=-1,searchQ='',sevFilter='',auditSearch='',auditStatusFilter='';
+
+const CD={
+  plugins:{legend:{display:false},tooltip:{backgroundColor:'#1c2330',titleColor:'#e6edf3',bodyColor:'#8b949e',borderColor:'#30363d',borderWidth:1,padding:10,cornerRadius:8}},
+  scales:{x:{grid:{color:'#30363d22'},ticks:{color:'#8b949e',font:{size:11}}},y:{grid:{color:'#30363d44'},ticks:{color:'#8b949e',font:{size:11}}}}
+};
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='audit') loadAudit();
+}
+
+// ── Dashboard data ────────────────────────────────────────────────────────────
+async function fetchDashboardData(days=7){
+  try{
+    const r=await fetch('/dashboard/data?days='+days,{credentials:'include'});
+    if(r.status===401){window.location.href='/auth/login';return;}
+    if(!r.ok){showToast('Server error: '+r.status);return;}
+    const d=await r.json();
+    INCIDENTS=d.incidents||[];
+    updateKPIs(d.stats);
+    rebuildBarChart(d.chart_daily);
+    rebuildDoughnut(d.stats);
+    rebuildHBar(d.incidents);
+    rebuildLine(d.chart_hourly);
+    applyFilters();
+    renderTimeline(d.incidents);
+    // Update tab badge
+    const crit=(d.stats&&d.stats.critical)||0;
+    document.getElementById('tabBadgeCrit').textContent=crit;
+    document.getElementById('tabBadgeCrit').className='tab-badge'+(crit>0?' red':'');
+  }catch(e){showToast('Ket noi that bai: '+e.message);}
+}
+
+function reloadWithDays(v){fetchDashboardData(parseInt(v));}
+
+// ── KPI ───────────────────────────────────────────────────────────────────────
+function updateKPIs(s){
+  if(!s)return;
+  animCount('kpi-total',s.total||0);
+  animCount('kpi-critical',s.critical||0);
+  animCount('kpi-warning',s.warning||0);
+  animCount('kpi-advisory',s.advisory||0);
+  animCount('kpi-notified',s.notified||0);
+  animCount('kpi-targets',s.targets||0);
+  document.getElementById('kpi-total-delta').textContent=(s.advisory||0)+' advisory - '+(s.clear||0)+' clear';
+  document.getElementById('kpi-crit-delta').textContent=s.critical>0?s.critical+' can xu ly ngay':'Khong co critical';
+}
+
+function animCount(id,target){
+  const el=document.getElementById(id);if(!el)return;
+  let cur=0;const step=Math.max(1,Math.round(target/20));
+  const t=setInterval(()=>{cur=Math.min(cur+step,target);el.textContent=cur;if(cur>=target)clearInterval(t);},40);
+}
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+function rebuildBarChart(cd){
+  if(!cd)return;
+  const ctx=document.getElementById('barChart').getContext('2d');
+  if(_cBar)_cBar.destroy();
+  _cBar=new Chart(ctx,{type:'bar',data:{labels:cd.labels,datasets:[
+    {label:'Critical',data:cd.critical,backgroundColor:'rgba(248,81,73,.75)',borderRadius:4},
+    {label:'Warning', data:cd.warning, backgroundColor:'rgba(210,153,34,.75)',borderRadius:4},
+    {label:'Advisory',data:cd.advisory,backgroundColor:'rgba(56,139,253,.75)', borderRadius:4},
+  ]},options:{...CD,responsive:true,scales:{x:{...CD.scales.x,stacked:true},y:{...CD.scales.y,stacked:true}}}});
+}
+
+function rebuildDoughnut(s){
+  if(!s)return;
+  const ctx=document.getElementById('doughnutChart').getContext('2d');
+  if(_cDot)_cDot.destroy();
+  _cDot=new Chart(ctx,{type:'doughnut',data:{labels:['Critical','Warning','Advisory','Clear'],datasets:[{
+    data:[s.critical||0,s.warning||0,s.advisory||0,s.clear||0],
+    backgroundColor:['rgba(248,81,73,.8)','rgba(210,153,34,.8)','rgba(56,139,253,.8)','rgba(63,185,80,.8)'],
+    borderColor:'#161b22',borderWidth:3,hoverOffset:6
+  }]},options:{responsive:true,cutout:'68%',plugins:{
+    legend:{display:true,position:'bottom',labels:{color:'#8b949e',font:{size:11},padding:14,boxWidth:10,usePointStyle:true}},
+    tooltip:CD.plugins.tooltip
+  }}});
+}
+
+function rebuildHBar(incidents){
+  if(!incidents)return;
+  const t={};incidents.forEach(i=>{t[i.target]=(t[i.target]||0)+1;});
+  const sorted=Object.entries(t).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const ctx=document.getElementById('hbarChart').getContext('2d');
+  if(_cHBar)_cHBar.destroy();
+  _cHBar=new Chart(ctx,{type:'bar',data:{labels:sorted.map(x=>x[0]),datasets:[{
+    data:sorted.map(x=>x[1]),
+    backgroundColor:['rgba(248,81,73,.75)','rgba(210,153,34,.75)','rgba(56,139,253,.75)','rgba(63,185,80,.75)','rgba(188,140,255,.75)','rgba(240,136,62,.75)','rgba(57,197,207,.75)','rgba(56,139,253,.5)'],
+    borderRadius:4
+  }]},options:{indexAxis:'y',responsive:true,plugins:CD.plugins,scales:{x:{...CD.scales.x},y:{...CD.scales.y,grid:{display:false}}}}});
+}
+
+function rebuildLine(ch){
+  if(!ch)return;
+  const ctx=document.getElementById('lineChart').getContext('2d');
+  if(_cLine)_cLine.destroy();
+  _cLine=new Chart(ctx,{type:'line',data:{labels:ch.labels,datasets:[{
+    data:ch.data,label:'Incidents/gio',
+    borderColor:'rgba(56,139,253,.9)',backgroundColor:'rgba(56,139,253,.08)',
+    borderWidth:2,pointRadius:3,pointBackgroundColor:'rgba(56,139,253,.9)',fill:true,tension:.35
+  }]},options:{responsive:true,plugins:CD.plugins,scales:{x:{...CD.scales.x,ticks:{...CD.scales.x.ticks,maxTicksLimit:8}},y:{...CD.scales.y}}}});
+}
+
+// ── Incident table ────────────────────────────────────────────────────────────
+function applyFilters(){
+  filtered=INCIDENTS.filter(i=>{
+    const q=searchQ.toLowerCase();
+    return(!q||i.target.toLowerCase().includes(q)||i.message.toLowerCase().includes(q))
+        &&(!sevFilter||i.severity===sevFilter);
+  });
+  filtered.sort((a,b)=>{const av=a[sortKey]||'',bv=b[sortKey]||'';return av<bv?-sortDir:av>bv?sortDir:0;});
+  currentPage=1;renderTable();
+}
+function filterTable(v){searchQ=v;applyFilters();}
+function filterSeverity(v){sevFilter=v;applyFilters();}
+function sortTable(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}applyFilters();}
+
+function renderTable(){
+  const start=(currentPage-1)*PAGE_SIZE,page=filtered.slice(start,start+PAGE_SIZE);
+  document.getElementById('tableBody').innerHTML=page.map(i=>`
+    <tr onclick="openModal(${i.id})" title="Click de xem chi tiet">
+      <td style="color:var(--text-muted);font-size:11px;white-space:nowrap">${i.time}</td>
+      <td><div class="target-name">${i.target}</div><div class="target-db">${i.db}</div></td>
+      <td><span class="sev-badge sev-${i.severity.toLowerCase()}">${i.severity}</span></td>
+      <td style="font-size:11px"><span class="cmd-code">${i.metric||'-'}</span>${i.value?' = '+i.value:''}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.message}</td>
+    </tr>`).join('');
+  const total=filtered.length,pages=Math.ceil(total/PAGE_SIZE);
+  document.getElementById('tableInfo').textContent=total===0?'Khong co incident':`Hien thi ${Math.min(start+1,total)}-${Math.min(start+PAGE_SIZE,total)} / ${total}`;
+  const pg=document.getElementById('pagination');pg.innerHTML='';
+  for(let p=1;p<=Math.min(pages,8);p++){const btn=document.createElement('button');btn.className='page-btn'+(p===currentPage?' active':'');btn.textContent=p;btn.onclick=()=>{currentPage=p;renderTable();};pg.appendChild(btn);}
+}
+
+// ── Timeline ──────────────────────────────────────────────────────────────────
+function renderTimeline(incidents){
+  const latest=(incidents||[]).slice(0,12);
+  if(!latest.length){document.getElementById('timeline').innerHTML='<div style="padding:20px;color:var(--text-muted);font-size:12px">Chua co su kien</div>';return;}
+  const tm={CRITICAL:'crit',WARNING:'warn',ADVISORY:'info',INFO:'info',CLEAR:'ok'};
+  const lm={CRITICAL:'C',WARNING:'W',ADVISORY:'A',INFO:'I',CLEAR:'V'};
+  document.getElementById('timeline').innerHTML=latest.map(i=>`
+    <div class="tl-item">
+      <div class="tl-dot ${tm[i.severity]||'info'}">${lm[i.severity]||'?'}</div>
+      <div class="tl-content">
+        <div class="tl-msg">${i.message.length>60?i.message.slice(0,60)+'...':i.message}</div>
+        <div class="tl-meta">Target: <span class="tl-target">${i.target}</span> | <span class="cmd-code">${i.metric||''}</span></div>
+        <div class="tl-time">${i.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Incident Modal ────────────────────────────────────────────────────────────
+function openModal(id){
+  const inc=INCIDENTS.find(i=>i.id===id);if(!inc)return;
+  document.getElementById('modalId').textContent='INC-'+String(id).padStart(4,'0');
+  document.getElementById('modalTitle').textContent=inc.target+' - '+inc.severity;
+  document.getElementById('mTarget').textContent=inc.target;
+  document.getElementById('mDb').textContent=inc.db;
+  document.getElementById('mTime').textContent=inc.time;
+  document.getElementById('mCategory').textContent=inc.category||'-';
+  document.getElementById('mMetric').textContent=inc.metric||'-';
+  document.getElementById('mValue').textContent=inc.value||'-';
+  document.getElementById('mMessage').textContent=inc.message||'-';
+  document.getElementById('mSeverity').innerHTML=`<span class="sev-badge sev-${inc.severity.toLowerCase()}">${inc.severity}</span>`;
+  document.getElementById('modalBackdrop').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(){document.getElementById('modalBackdrop').classList.remove('open');document.body.style.overflow='';}
+function closeModalBackdrop(e){if(e.target===document.getElementById('modalBackdrop'))closeModal();}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+// ── Export CSV ────────────────────────────────────────────────────────────────
+function exportCSV(){
+  const rows=[['ID','Time','Target','DB','Severity','Category','Metric','Value','Message']];
+  filtered.forEach(i=>rows.push(['INC-'+String(i.id).padStart(4,'0'),i.time,i.target,i.db,i.severity,i.category,i.metric,i.value,'"'+i.message.replace(/"/g,'""')+'"']));
+  const csv=rows.map(r=>r.join(',')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const now=new Date(),ts=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0');
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Monitor_v2_Incidents_'+ts+'.csv';a.click();
+  showToast('Exported '+filtered.length+' incidents');
+}
+
+// ── Audit Log ─────────────────────────────────────────────────────────────────
+async function loadAudit(){
+  try{
+    const r=await fetch('/dashboard/audit?limit=50',{credentials:'include'});
+    if(r.status===401){window.location.href='/auth/login';return;}
+    const d=await r.json();
+    AUDIT_DATA=d.entries||[];
+    const s=d.stats||{};
+    animCount('aud-total',s.total||0);
+    animCount('aud-exec',s.executed||0);
+    animCount('aud-fail',s.failed||0);
+    animCount('aud-timeout',s.timeout||0);
+    animCount('aud-pending',s.pending||0);
+    document.getElementById('tabBadgeAudit').textContent=AUDIT_DATA.length;
+    filterAuditData();
+  }catch(e){showToast('Audit load failed: '+e.message);}
+}
+
+function filterAuditData(){
+  const q=auditSearch.toLowerCase(),sf=auditStatusFilter;
+  AUDIT_FILTERED=AUDIT_DATA.filter(e=>{
+    return(!q||e.command.toLowerCase().includes(q)||e.user_name.toLowerCase().includes(q)||e.target.toLowerCase().includes(q))
+        &&(!sf||e.status===sf);
+  });
+  renderAuditTable();
+}
+function filterAudit(v){auditSearch=v;filterAuditData();}
+function filterAuditStatus(v){auditStatusFilter=v;filterAuditData();}
+
+function renderAuditTable(){
+  const statusClass={executed:'st-executed',failed:'st-failed',pending:'st-pending',
+    approved:'st-approved',rejected:'st-rejected',timeout:'st-timeout',system:'st-system'};
+  document.getElementById('auditBody').innerHTML=AUDIT_FILTERED.map(e=>`
+    <tr>
+      <td style="color:var(--text-dim);font-size:11px">#${e.id}</td>
+      <td style="font-weight:600">${e.user_name}</td>
+      <td><span class="cmd-code">${e.command}</span></td>
+      <td style="color:var(--accent);font-size:11px">${e.target}</td>
+      <td><span class="status-pill ${statusClass[e.status]||'st-system'}">${e.status}</span></td>
+      <td style="font-size:11px;color:var(--text-muted)">${e.approved_by}</td>
+      <td style="font-size:11px;color:var(--text-muted);white-space:nowrap">${e.created_at}</td>
+      <td style="font-size:11px;color:var(--text-muted)">${e.executed_at}</td>
+    </tr>`).join('');
+  document.getElementById('auditInfo').textContent=`Hien thi ${AUDIT_FILTERED.length} / ${AUDIT_DATA.length} entries`;
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.style.display='flex';t.classList.remove('fade-out');
+  clearTimeout(t._timer);t._timer=setTimeout(()=>{t.classList.add('fade-out');setTimeout(()=>{t.style.display='none';},300);},3000);
+}
+
+// ── Clock & auto-refresh ──────────────────────────────────────────────────────
+function updateClock(){const n=new Date();document.getElementById('clock').textContent=n.toLocaleTimeString('vi-VN',{hour12:false})+' - '+n.toLocaleDateString('vi-VN');}
+setInterval(updateClock,1000);updateClock();
+
+const REFRESH_INTERVAL=30;
+let arSeconds=REFRESH_INTERVAL,arEnabled=true,arTimer=null;
+function toggleAutoRefresh(e){arEnabled=e;if(e){arSeconds=REFRESH_INTERVAL;startArTimer();}else{clearInterval(arTimer);document.getElementById('arCountdown').textContent='OFF';document.getElementById('arBar').style.width='0%';}}
+function startArTimer(){
+  clearInterval(arTimer);
+  arTimer=setInterval(()=>{
+    if(!arEnabled)return;
+    arSeconds--;
+    const pct=(arSeconds/REFRESH_INTERVAL)*100;
+    const bar=document.getElementById('arBar'),cd=document.getElementById('arCountdown');
+    bar.style.width=pct+'%';bar.style.background=arSeconds<=5?'var(--yellow)':'var(--green)';
+    cd.textContent=arSeconds+'s';cd.className='ar-countdown'+(arSeconds<=5?' urgent':'');
+    if(arSeconds<=0){doRefresh();arSeconds=REFRESH_INTERVAL;}
+  },1000);
+}
+async function doRefresh(){
+  const btn=document.getElementById('refreshBtn');btn.classList.add('spinning');
+  await fetchDashboardData(parseInt(document.getElementById('daySelect').value)||7);
+  btn.classList.remove('spinning');
+  showToast('Da lam moi - '+new Date().toLocaleTimeString('vi-VN'));
+  if(arEnabled)arSeconds=REFRESH_INTERVAL;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+fetchDashboardData(7);
+startArTimer();
+</script>
+</body>
+</html>

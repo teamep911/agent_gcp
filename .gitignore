@@ -1,0 +1,14 @@
+.venv/
+.venv*/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+.env.*
+!.env.example
+logs/
+backups/
+artifacts/
+*.log
+.DS_Store

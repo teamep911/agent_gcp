@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor v2 — Login</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d1117;
+           display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px;
+            padding: 40px 48px; width: 100%; max-width: 400px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.6); }
+    .logo-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .logo { width: 36px; height: 36px; border-radius: 8px;
+            background: linear-gradient(135deg, #388bfd, #bc8cff);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 900; color: #fff; }
+    h1 { color: #e6edf3; font-size: 1.35rem; font-weight: 700; }
+    .subtitle { color: #8b949e; font-size: 0.83rem; margin-bottom: 28px; }
+    label { display: block; font-size: 0.83rem; color: #8b949e; font-weight: 600;
+            margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
+    input { width: 100%; padding: 10px 14px; background: #0d1117; border: 1px solid #30363d;
+            border-radius: 6px; color: #e6edf3; font-size: 0.95rem; margin-bottom: 16px;
+            outline: none; transition: border-color .2s; }
+    input:focus { border-color: #388bfd; }
+    button { width: 100%; padding: 11px; background: #238636; color: #fff; border: none;
+             border-radius: 6px; font-size: 0.95rem; cursor: pointer; font-weight: 600;
+             transition: background .2s; }
+    button:hover { background: #2ea043; }
+    .error { background: rgba(248,81,73,.12); color: #f85149; border: 1px solid rgba(248,81,73,.3);
+             border-radius: 6px; padding: 10px 14px; font-size: 0.87rem; margin-bottom: 16px; }
+    .footer { text-align: center; margin-top: 20px; font-size: 0.75rem; color: #484f58; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo-row">
+      <div class="logo">M</div>
+      <h1>Monitor v2</h1>
+    </div>
+    <p class="subtitle">DBA Dashboard — Oracle OEM Monitoring</p>
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="/auth/login">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" autocomplete="username"
+             value="{{ username or '' }}" required autofocus>
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" required>
+      <button type="submit">Sign In</button>
+    </form>
+    <p class="footer">Internal use only &nbsp;|&nbsp; MService DBA Team</p>
+  </div>
+</body>
+</html>
