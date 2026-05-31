@@ -70,7 +70,7 @@ rules:
         - get_tablespace_usage
     notification:
       priority: "HIGH"
-      mention_approver: true   # cần DBA lead chú ý
+      mention_approver: true
 
   # -----------------------------------------------------------
   # Sessions
@@ -89,6 +89,21 @@ rules:
     notification:
       priority: "HIGH"
       mention_approver: true
+
+  - id: session_usage_demo_70
+    name: "Session Usage Demo > 70%"
+    description: "Demo session utilization vượt 70% cho luồng test thực tế"
+    match:
+      metric_name: "sessionUsagePercent"
+      severity: ["WARNING", "CRITICAL"]
+      metric_value_min: 70
+    rca:
+      summary: "Session usage > 70% demo. Kiểm tra app connection pool, session leak, inactive sessions và job/batch tăng đột biến."
+      check_commands:
+        - get_target_status
+    notification:
+      priority: "MEDIUM"
+      mention_approver: false
 
   # -----------------------------------------------------------
   # Blocking Locks

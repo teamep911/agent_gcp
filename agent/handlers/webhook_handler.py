@@ -57,8 +57,40 @@ async def receive_oem_event(request: Request, payload: OEMPayload):
 
     event = payload.dict()
     safe_payload = mask_payload(event)
+    await write_audit_event(
+        event_type="oem.alert.received",
+        details={
+            "target": payload.target_name,
+            "severity": payload.severity,
+            "metric_name": payload.metric_name,
+            "metric_value": payload.metric_value,
+            "message": payload.message,
+        },
+        user_name="OEM",
+    )
     matched_rule = _rule_engine.match(event)
+    if matched_rule:
+        await write_audit_event(
+            event_type="rule.matched",
+            details={
+                "target": payload.target_name,
+                "metric_name": payload.metric_name,
+                "rule_id": matched_rule.get("id"),
+                "rule_name": matched_rule.get("name"),
+            },
+            user_name="OEM",
+        )
     rca_result = _rca_engine.analyze(event, matched_rule) if matched_rule else None
+    if rca_result:
+        await write_audit_event(
+            event_type="rca.generated",
+            details={
+                "target": payload.target_name,
+                "metric_name": payload.metric_name,
+                "summary": rca_result.get("summary") if isinstance(rca_result, dict) else None,
+            },
+            user_name="OEM",
+        )
     incident_id = await save_incident(
         target_name=payload.target_name,
         target_type=payload.target_type,
@@ -71,12 +103,44 @@ async def receive_oem_event(request: Request, payload: OEMPayload):
         raw_payload=safe_payload,
         rca_result=rca_result,
     )
+    await write_audit_event(
+        event_type="incident.saved",
+        details={
+            "incident_id": incident_id,
+            "target": payload.target_name,
+            "severity": payload.severity,
+            "metric_name": payload.metric_name,
+            "metric_value": payload.metric_value,
+        },
+        user_name="OEM",
+    )
 
     gcp_sent = False
     if matched_rule:
         gcp_sent = await send_alert_to_gcp(incident_id, event, matched_rule, rca_result)
         if gcp_sent:
             await mark_incident_notified(incident_id)
+            await write_audit_event(
+                event_type="notification.sent",
+                details={
+                    "incident_id": incident_id,
+                    "target": payload.target_name,
+                    "channel": "gcp_gateway",
+                    "metric_name": payload.metric_name,
+                },
+                user_name="OEM",
+            )
+        else:
+            await write_audit_event(
+                event_type="notification.failed",
+                details={
+                    "incident_id": incident_id,
+                    "target": payload.target_name,
+                    "channel": "gcp_gateway",
+                    "metric_name": payload.metric_name,
+                },
+                user_name="OEM",
+            )
         if _should_capture_perf_bundle(event, matched_rule):
             bundle = await _capture_perf_bundle_flex()
             if bundle:
@@ -85,6 +149,7 @@ async def receive_oem_event(request: Request, payload: OEMPayload):
     await write_audit_event(
         event_type="oem_webhook_received",
         details={"incident_id": incident_id, "target": payload.target_name, "gcp_sent": gcp_sent},
+        user_name="OEM",
     )
     return {"status": "accepted", "incident_id": incident_id, "gcp_sent": gcp_sent}
 

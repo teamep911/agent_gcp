@@ -1,102 +1,100 @@
 {
-  "title": "Agent Monitor End-to-End Flow Test",
-  "updated_at": "2026-05-31T03:50:57+07:00",
+  "title": "Agent Monitor Real Demo Flow Test",
+  "updated_at": "2026-05-31T13:49:23+07:00",
   "environment": {
-    "agent_host": "openclaw",
     "agent_health": "http://127.0.0.1:2020/health",
     "agent_oem_webhook": "http://127.0.0.1:2020/webhook/oem",
     "agent_google_chat_command": "http://127.0.0.1:2020/google-chat/command",
-    "gateway_host": "gcp",
+    "dashboard_data": "http://127.0.0.1:2020/dashboard/data",
+    "dashboard_audit": "http://127.0.0.1:2020/dashboard/audit",
     "gateway_health_public": "http://118.69.205.10:2222/health",
     "gateway_alerts_public": "http://118.69.205.10:2222/agent/alerts",
     "gateway_google_chat_events_public": "http://118.69.205.10:2222/google-chat/events"
   },
   "notes": [
-    "Current runtime uses temporary public IP fallback on 118.69.205.10:2222.",
-    "Preferred final endpoint remains https://gcp.leevo.top when DNS/tunnel is healthy."
+    "Real demo runner sends signed OEM-like alerts through the live Agent endpoint.",
+    "Dashboard/audit verification is DB-backed via incident_id/audit_id returned by APIs.",
+    "Google Chat final room visibility remains manual_verify if room history is not observable from shell."
   ],
   "tracks": [
     {
-      "id": "track_a",
-      "name": "OEM -> Agent -> Gateway -> Google Chat",
+      "id": "preflight",
+      "name": "S0 Preflight",
       "steps": [
         {
-          "id": "a1",
-          "label": "Agent health check",
+          "id": "s0_agent",
+          "label": "Agent health",
           "status": "passed",
-          "detail": "{\"status\":\"ok\",\"service\":\"agent_monitor\",\"version\":\"0.1.0\"}"
+          "detail": "HTTP 200: {'status': 'ok', 'service': 'agent_monitor', 'version': '0.1.0'}",
+          "ended_at": "2026-05-31T13:49:15+07:00"
         },
         {
-          "id": "a2",
-          "label": "Gateway public health check",
+          "id": "s0_gateway",
+          "label": "Gateway health",
           "status": "passed",
-          "detail": "{\"status\":\"ok\",\"service\":\"ggchat_app\"}"
-        },
-        {
-          "id": "a3",
-          "label": "Send signed synthetic OEM alert to Agent",
-          "status": "passed",
-          "detail": "{\"status\":\"accepted\",\"incident_id\":86,\"gcp_sent\":true}"
-        },
-        {
-          "id": "a4",
-          "label": "Verify Agent rule match and incident save",
-          "status": "passed",
-          "detail": "rule_engine.matched + db.incident.saved found"
-        },
-        {
-          "id": "a5",
-          "label": "Verify Agent outbound send to Gateway",
-          "status": "passed",
-          "detail": "gcp_gateway.alert.sent found"
-        },
-        {
-          "id": "a6",
-          "label": "Verify Gateway accepted alert",
-          "status": "passed",
-          "detail": "Gateway reachable and alert path accepted; final webhook delivery is not fully observable from shell"
-        },
-        {
-          "id": "a7",
-          "label": "Verify Google Chat delivery if observable",
-          "status": "manual_verify",
-          "detail": "Manual confirm in Google Chat space if message visibility is required"
+          "detail": "HTTP 200: {'status': 'ok', 'service': 'ggchat_app'}",
+          "ended_at": "2026-05-31T13:49:15+07:00"
         }
       ]
     },
     {
-      "id": "track_b",
-      "name": "Google Chat -> Gateway -> Agent",
+      "id": "inbound",
+      "name": "OEM -> Agent -> Dashboard/Audit -> Gateway",
       "steps": [
         {
-          "id": "b1",
-          "label": "Gateway public health check",
+          "id": "s2_cpu",
+          "label": "S2 CPU threshold >= 90%",
           "status": "passed",
-          "detail": "{\"status\":\"ok\",\"service\":\"ggchat_app\"}"
+          "detail": "incident_id=90 gcp_sent=True metric=cpuUtilization value=97 message=DEMO-1780210155-cpuUtilization | CPU threshold breach demo",
+          "ended_at": "2026-05-31T13:49:18+07:00"
         },
         {
-          "id": "b2",
-          "label": "Send synthetic Google Chat event to Gateway",
+          "id": "s3_session",
+          "label": "S3 Session usage > 70% demo",
           "status": "passed",
-          "detail": "{\"text\":\"✅ Accepted command `/status flex`. job_id=gchat-d4ea1f01a787\"}"
+          "detail": "incident_id=91 gcp_sent=True metric=sessionUsagePercent value=75 message=DEMO-1780210158-sessionUsagePercent | Session usage above 70 percent demo",
+          "ended_at": "2026-05-31T13:49:21+07:00"
         },
         {
-          "id": "b3",
-          "label": "Verify Gateway authorization accepted user/domain",
+          "id": "s1_lock",
+          "label": "S1 Application/blocking lock demo",
           "status": "passed",
-          "detail": "{\"text\":\"✅ Accepted command `/status flex`. job_id=gchat-d4ea1f01a787\"}"
+          "detail": "incident_id=92 gcp_sent=True metric=userBlockedSessionCount value=3 message=DEMO-1780210161-userBlockedSessionCount | Application lock/blocking session demo",
+          "ended_at": "2026-05-31T13:49:22+07:00"
         },
         {
-          "id": "b4",
-          "label": "Verify Gateway forwarded command to Agent",
+          "id": "s4_tablespace",
+          "label": "S4 Tablespace threshold demo",
           "status": "passed",
-          "detail": "google_chat.command.accepted found"
+          "detail": "incident_id=93 gcp_sent=True metric=tablespaceUsedPercent value=91 message=DEMO-1780210162-tablespaceUsedPercent | Tablespace threshold demo USERS 91 percent used",
+          "ended_at": "2026-05-31T13:49:23+07:00"
+        }
+      ]
+    },
+    {
+      "id": "reverse",
+      "name": "Google Chat -> Gateway -> Agent -> Audit",
+      "steps": [
+        {
+          "id": "s5_status",
+          "label": "S5 /status flex command audit",
+          "status": "passed",
+          "detail": "job_id=gchat-1756aae662a5 audit_id=123 command=/status flex",
+          "ended_at": "2026-05-31T13:49:23+07:00"
         },
         {
-          "id": "b5",
-          "label": "Verify Agent accepted command and returned job_id",
+          "id": "s6_blocking_locks",
+          "label": "S6 /blocking_locks FLEX command audit",
           "status": "passed",
-          "detail": "{\"text\":\"✅ Accepted command `/status flex`. job_id=gchat-d4ea1f01a787\"}"
+          "detail": "job_id=gchat-f96525f796b9 audit_id=125 command=/blocking_locks FLEX",
+          "ended_at": "2026-05-31T13:49:23+07:00"
+        },
+        {
+          "id": "s7_unauthorized",
+          "label": "S7 Unauthorized command rejection",
+          "status": "passed",
+          "detail": "Unauthorized rejected as expected: {'detail': 'invalid_gateway_secret'}",
+          "ended_at": "2026-05-31T13:49:23+07:00"
         }
       ]
     }
