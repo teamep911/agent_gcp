@@ -18,6 +18,7 @@ def build_gateway_alert_payload(incident_id: int, event: dict, rule: dict, rca_r
     return {
         "source": "agent_monitor",
         "incident_id": incident_id,
+        "trace_id": event.get("trace_id") or f"incident-{incident_id}",
         "target_name": event.get("target_name"),
         "target_type": event.get("target_type", "oracle_database"),
         "severity": event.get("severity"),
@@ -27,6 +28,8 @@ def build_gateway_alert_payload(incident_id: int, event: dict, rule: dict, rca_r
         "message": event.get("message"),
         "rule_name": event.get("rule_name"),
         "occurred_at": event.get("occurred_at"),
+        "threshold_value": event.get("threshold_value"),
+        "perf_bundle": event.get("perf_bundle") or {},
         "rule": rule,
         "rca": rca_result,
     }

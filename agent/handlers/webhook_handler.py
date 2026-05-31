@@ -259,11 +259,15 @@ def _top_sql_rows(csv_path: str | None, limit: int = 3) -> list[dict]:
         for row in csv.DictReader(f):
             if not (row.get("sql_id") or "").strip():
                 continue
+            sql_text = (row.get("sql_text") or "").strip()
+            extra = row.get(None) or []
+            if extra:
+                sql_text = " ".join([sql_text, *[str(x) for x in extra if x]]).strip()
             rows.append({
                 "owner": (row.get("username") or "-").strip(),
                 "sql_id": (row.get("sql_id") or "-").strip(),
                 "active_sessions": (row.get("active_sessions") or "-").strip(),
-                "sql_text": (row.get("sql_text") or "-").strip()[:500],
+                "sql_text": (sql_text or "-").replace("\n", " ").strip()[:500],
             })
             if len(rows) >= limit:
                 break
