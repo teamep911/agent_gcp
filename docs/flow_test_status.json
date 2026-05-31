@@ -1,6 +1,6 @@
 {
   "title": "Agent Monitor Real Demo Flow Test",
-  "updated_at": "2026-05-31T15:33:56+07:00",
+  "updated_at": "2026-05-31T15:50:34+07:00",
   "environment": {
     "agent_health": "http://127.0.0.1:2020/health",
     "agent_oem_webhook": "http://127.0.0.1:2020/webhook/oem",
@@ -107,35 +107,35 @@
           "label": "Check FLEXING context",
           "status": "passed",
           "detail": "PDB_OPEN_MODE=READ WRITE",
-          "ended_at": "2026-05-31T15:32:56+07:00"
+          "ended_at": "2026-05-31T15:40:34+07:00"
         },
         {
           "id": "lock_start",
           "label": "Start holder/waiter sessions",
           "status": "passed",
-          "detail": "holder_pid=1011091 waiter_pid=1011100 holder_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_holder_long_20260531_153254.log waiter_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_waiter_long_20260531_153254.log",
-          "ended_at": "2026-05-31T15:33:06+07:00"
+          "detail": "holder_pid=1012572 waiter_pid=1012598 holder_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_holder_long_20260531_154032.log waiter_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_waiter_long_20260531_154032.log",
+          "ended_at": "2026-05-31T15:40:44+07:00"
         },
         {
           "id": "lock_evidence",
           "label": "Capture lock evidence sql_id/sql_text/owner",
           "status": "passed",
-          "detail": "owner=SYS sql_id=6gf3ff0pvjn4q wait_class=Application event=enq: UL - contention sql_text=DECLARE   l_handle VARCHAR2(128);   l_result NUMBER; BEGIN   DBMS_LOCK.ALLOCATE_UNIQUE('MONITOR_V2_DEMO_APPLICATION_LOCK', l_handle);\t l_re state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_153254.log",
-          "ended_at": "2026-05-31T15:33:06+07:00"
+          "detail": "owner=SYS sql_id=bwgx5rnvsdatc wait_class=Application event=enq: UL - contention sql_text=DECLARE   l_handle VARCHAR2(128);   l_result NUMBER; BEGIN   DBMS_LOCK.ALLOCATE_UNIQUE('MONITOR_V2_DEMO_APPLICATION_LOCK', l_handle);\tl_re state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_154032.log",
+          "ended_at": "2026-05-31T15:40:44+07:00"
         },
         {
           "id": "lock_alert_loop",
           "label": "Repeat alert every 5 minutes while lock remains",
           "status": "passed",
-          "detail": "Completed 1 repeated alerts; incidents=[95] state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_153254.log",
-          "ended_at": "2026-05-31T15:33:56+07:00"
+          "detail": "Completed 5 repeated alerts; incidents=[96, 97, 98, 99, 100] state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_154032.log",
+          "ended_at": "2026-05-31T15:50:34+07:00"
         },
         {
           "id": "lock_finish",
           "label": "Finish / cleanup",
           "status": "passed",
-          "detail": "holder_done rc=0 waiter_done rc=0 incidents=[95] state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_153254.log",
-          "ended_at": "2026-05-31T15:33:56+07:00"
+          "detail": "holder_done rc=0 waiter_done rc=0 incidents=[96, 97, 98, 99, 100] state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_154032.log",
+          "ended_at": "2026-05-31T15:50:34+07:00"
         }
       ]
     }

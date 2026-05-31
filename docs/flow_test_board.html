@@ -48,7 +48,7 @@
       <h1>Agent Monitor Real Demo Flow Test</h1>
       <div class="sub">Realtime board for practical demo flows: preflight, inbound OEM-like scenarios, and reverse Google Chat command/audit scenarios.</div>
       <div class="meta">
-        <div class="pill">Updated: 2026-05-31T15:33:56+07:00</div>
+        <div class="pill">Updated: 2026-05-31T15:50:34+07:00</div>
         <div class="pill">Forward flow: OEM -> Agent -> Dashboard/Audit -> Gateway</div>
         <div class="pill">Reverse flow: Google Chat -> Gateway -> Agent -> Audit</div>
       </div>
@@ -123,25 +123,25 @@
       <div class="dot"></div>
       <div>
         <div class="step-title">LOCK_START — Start holder/waiter sessions</div>
-        <div class="detail">holder_pid=1011091 waiter_pid=1011100 holder_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_holder_long_20260531_153254.log waiter_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_waiter_long_20260531_153254.log</div>
+        <div class="detail">holder_pid=1012572 waiter_pid=1012598 holder_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_holder_long_20260531_154032.log waiter_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_waiter_long_20260531_154032.log</div>
       </div>
     </div><div class="step passed">
       <div class="dot"></div>
       <div>
         <div class="step-title">LOCK_EVIDENCE — Capture lock evidence sql_id/sql_text/owner</div>
-        <div class="detail">owner=SYS sql_id=6gf3ff0pvjn4q wait_class=Application event=enq: UL - contention sql_text=DECLARE   l_handle VARCHAR2(128);   l_result NUMBER; BEGIN   DBMS_LOCK.ALLOCATE_UNIQUE(&#x27;MONITOR_V2_DEMO_APPLICATION_LOCK&#x27;, l_handle);	 l_re state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_153254.log</div>
+        <div class="detail">owner=SYS sql_id=bwgx5rnvsdatc wait_class=Application event=enq: UL - contention sql_text=DECLARE   l_handle VARCHAR2(128);   l_result NUMBER; BEGIN   DBMS_LOCK.ALLOCATE_UNIQUE(&#x27;MONITOR_V2_DEMO_APPLICATION_LOCK&#x27;, l_handle);	l_re state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_154032.log</div>
       </div>
     </div><div class="step passed">
       <div class="dot"></div>
       <div>
         <div class="step-title">LOCK_ALERT_LOOP — Repeat alert every 5 minutes while lock remains</div>
-        <div class="detail">Completed 1 repeated alerts; incidents=[95] state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_153254.log</div>
+        <div class="detail">Completed 5 repeated alerts; incidents=[96, 97, 98, 99, 100] state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_154032.log</div>
       </div>
     </div><div class="step passed">
       <div class="dot"></div>
       <div>
         <div class="step-title">LOCK_FINISH — Finish / cleanup</div>
-        <div class="detail">holder_done rc=0 waiter_done rc=0 incidents=[95] state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_153254.log</div>
+        <div class="detail">holder_done rc=0 waiter_done rc=0 incidents=[96, 97, 98, 99, 100] state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_154032.log</div>
       </div>
     </div></div></div></div>
     </section>

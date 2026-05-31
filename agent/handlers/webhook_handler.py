@@ -117,6 +117,12 @@ async def receive_oem_event(request: Request, payload: OEMPayload):
 
     gcp_sent = False
     if matched_rule:
+        if _should_capture_perf_bundle(event, matched_rule):
+            bundle = await _capture_perf_bundle_flex()
+            if bundle:
+                event["perf_bundle"] = bundle
+                event["threshold_value"] = _rule_threshold_value(matched_rule)
+                log.info("perf_bundle.captured", incident_id=incident_id, png=bundle.get("aas_png"))
         gcp_sent = await send_alert_to_gcp(incident_id, event, matched_rule, rca_result)
         if gcp_sent:
             await mark_incident_notified(incident_id)
@@ -141,11 +147,6 @@ async def receive_oem_event(request: Request, payload: OEMPayload):
                 },
                 user_name="OEM",
             )
-        if _should_capture_perf_bundle(event, matched_rule):
-            bundle = await _capture_perf_bundle_flex()
-            if bundle:
-                log.info("perf_bundle.captured", incident_id=incident_id, png=bundle.get("aas_png"))
-
     await write_audit_event(
         event_type="oem_webhook_received",
         details={"incident_id": incident_id, "target": payload.target_name, "gcp_sent": gcp_sent},
@@ -200,7 +201,73 @@ async def _capture_perf_bundle_flex() -> dict | None:
                 k, v = line.split("=", 1)
                 bundle[k.strip()] = v.strip()
         bundle["summary"] = "\n".join(p.read_text(errors="replace").splitlines()[1:4])
+    await _publish_perf_files_to_gateway(bundle)
+    bundle["aas_image_url"] = _public_perf_url(bundle.get("aas_png"))
+    bundle["top_sql"] = _top_sql_rows(bundle.get("top5_sql_csv"), limit=3)
     return bundle
+
+
+async def _publish_perf_files_to_gateway(bundle: dict) -> None:
+    target = os.getenv("GCP_GATEWAY_MEDIA_SSH_TARGET", "oracle@gcp")
+    remote_dir = os.getenv("GCP_GATEWAY_MEDIA_DIR", "/u01/app/ggchat_app/media/perf")
+    files = [bundle.get("aas_png"), bundle.get("aas_svg"), bundle.get("top5_sql_txt"), bundle.get("top5_sql_csv"), bundle.get("summary_path")]
+    files = [str(Path(f)) for f in files if f and Path(f).exists()]
+    if not files:
+        return
+    mkdir = await asyncio.create_subprocess_exec("ssh", target, "mkdir", "-p", remote_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    await mkdir.communicate()
+    if mkdir.returncode != 0:
+        log.warning("perf_bundle.publish.mkdir_failed", target=target, remote_dir=remote_dir)
+        return
+    proc = await asyncio.create_subprocess_exec("scp", "-q", *files, f"{target}:{remote_dir}/", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        log.warning("perf_bundle.publish.failed", target=target, stderr=stderr.decode(errors="replace")[-1000:])
+    else:
+        log.info("perf_bundle.publish.ok", target=target, remote_dir=remote_dir, count=len(files))
+
+
+def _rule_threshold_value(rule: dict) -> str | None:
+    match = rule.get("match") or {}
+    for key in ("metric_value_min", "metric_value_max", "threshold", "value"):
+        if key in match:
+            return str(match.get(key))
+    return None
+
+
+def _public_perf_url(path_value: str | None) -> str | None:
+    if not path_value:
+        return None
+    filename = Path(path_value).name
+    if not filename:
+        return None
+    base = os.getenv("GCP_GATEWAY_PUBLIC_BASE_URL", os.getenv("GCP_GATEWAY_BASE_URL", "")).rstrip("/")
+    if not base:
+        return None
+    return f"{base}/media/perf/{filename}"
+
+
+def _top_sql_rows(csv_path: str | None, limit: int = 3) -> list[dict]:
+    if not csv_path:
+        return []
+    p = Path(csv_path)
+    if not p.exists():
+        return []
+    import csv
+    rows = []
+    with p.open(newline="", errors="replace") as f:
+        for row in csv.DictReader(f):
+            if not (row.get("sql_id") or "").strip():
+                continue
+            rows.append({
+                "owner": (row.get("username") or "-").strip(),
+                "sql_id": (row.get("sql_id") or "-").strip(),
+                "active_sessions": (row.get("active_sessions") or "-").strip(),
+                "sql_text": (row.get("sql_text") or "-").strip()[:500],
+            })
+            if len(rows) >= limit:
+                break
+    return rows
 
 
 def _categorize(metric_name: str) -> str:
