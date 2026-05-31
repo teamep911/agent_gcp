@@ -1,33 +1,86 @@
-# FLEXING real demo scripts
+# Demo FLEXING shortcuts
 
-All scripts target DB host `flex`, CDB SID `flex`, PDB `FLEXING` by default. They are prepared so Sam can run them immediately when Nam asks for a real demo.
-
-Safety defaults:
-- No script is auto-run by deployment.
-- `check_flexing_context.sh` is read-only.
-- Lock demo uses `DBMS_LOCK`, no test table required.
-- Session demo opens live sleeping sessions and provides a cleanup script.
-- Threshold demo queries FLEXING first, then sends an OEM-like payload with target `FLEXING` to prove the full Agent/Gateway/Dashboard flow.
-
-Commands:
+Chạy từ agent host:
 
 ```bash
 cd /u01/app/agent_monitor
-
-# Read-only validation
-scripts/demo_flexing/check_flexing_context.sh
-
-# Real application-lock demo on FLEXING
-HOLD_SECONDS=90 WAIT_SECONDS=25 scripts/demo_flexing/run_lock_demo.sh
-
-# Real session demo on FLEXING; keep pids_file from output for cleanup
-SESSION_COUNT=30 HOLD_SECONDS=180 scripts/demo_flexing/run_session_demo.sh
-scripts/demo_flexing/cleanup_session_demo.sh /u01/app/agent_monitor/artifacts/demo_flexing/session_pids_<timestamp>.txt
-
-# Threshold demos using FLEXING evidence then alert payload
-scripts/demo_flexing/run_threshold_demo.sh cpu
-scripts/demo_flexing/run_threshold_demo.sh session
-scripts/demo_flexing/run_threshold_demo.sh tablespace
 ```
 
-Important: if PDB `FLEXING` is not OPEN READ WRITE, the scripts will fail fast. Do not open/alter PDB state without Nam approval.
+## 1) Lock demo — 5 phút / alert mỗi 1 phút
+
+```bash
+scripts/demo_flexing/run_lock_5m_1m.sh
+```
+
+Shortcut này tương đương:
+
+```bash
+LOCK_DEMO_HOLD_MINUTES=5 \
+LOCK_DEMO_ALERT_EVERY_MINUTES=1 \
+LOCK_DEMO_WAIT_SECONDS=360 \
+scripts/demo_flexing/run_lock_demo.sh
+```
+
+Kết quả:
+- tạo holder + waiter thật trên FLEXING
+- capture owner / sql_id / sql_text / event
+- gửi alert `blocking_lock`
+- update board/audit theo flow demo
+
+Artifacts:
+- `/u01/app/agent_monitor/artifacts/demo_flexing/lock_holder_long_*.log`
+- `/u01/app/agent_monitor/artifacts/demo_flexing/lock_waiter_long_*.log`
+- `/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_*.log`
+- `/u01/app/agent_monitor/artifacts/demo_flexing/lock_payloads_*/`
+
+## 2) Threshold demo — 5 phút / alert mỗi 1 phút
+
+```bash
+scripts/demo_flexing/run_threshold_5m_1m.sh
+```
+
+Shortcut này tương đương:
+
+```bash
+WORKERS=12 \
+DURATION_SECONDS=300 \
+ALERT_INTERVAL_SECONDS=60 \
+ALERT_COUNT=5 \
+WARMUP_SECONDS=20 \
+MAX_CPU_CORES=10 \
+THRESHOLD=90 \
+scripts/demo_flexing/run_real_aas_threshold_5m_loop.sh
+```
+
+Kết quả:
+- tạo active sessions thật trên FLEXING
+- tính current từ `gv$session active count`
+- gửi alert `cpu_critical_90`
+- gateway publish AAS chart + Top SQL lên Google Chat
+
+Artifacts:
+- `/u01/app/agent_monitor/artifacts/demo_flexing/real_aas_5m_loop_*.log`
+- `/u01/app/monitor/artifacts/perf/`
+- `/u01/app/ggchat_app/media/perf/`
+
+## 3) Threshold demo — 1 alert realtime
+
+```bash
+WORKERS=12 \
+HOLD_SECONDS=240 \
+WARMUP_SECONDS=60 \
+MAX_CPU_CORES=10 \
+THRESHOLD=90 \
+scripts/demo_flexing/run_real_aas_threshold_alert.sh
+```
+
+## 4) Context check trước khi chạy
+
+```bash
+scripts/demo_flexing/check_flexing_context.sh
+```
+
+## 5) Board / status
+
+- HTML board: `/u01/app/agent_monitor/docs/flow_test_board.html`
+- JSON status: `/u01/app/agent_monitor/docs/flow_test_status.json`

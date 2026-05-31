@@ -9,6 +9,7 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -24,6 +25,24 @@ router = APIRouter()
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "../templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 FLOW_STATUS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../docs/flow_test_status.json'))
+
+
+DISPLAY_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
+
+
+def _fmt_local(dt: datetime | None, fmt: str = "%Y-%m-%d %H:%M:%S") -> str:
+    if not dt:
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(DISPLAY_TZ).strftime(fmt)
+
+
+def _local_day_start_utc() -> datetime:
+    now_local = datetime.now(DISPLAY_TZ)
+    start_local = datetime(now_local.year, now_local.month, now_local.day, tzinfo=DISPLAY_TZ)
+    return start_local.astimezone(timezone.utc)
+
 
 _DB_LABEL = {
     "oracle_database": "Oracle DB",
@@ -71,7 +90,7 @@ async def dashboard_data(days: int = 7, user: str = Depends(require_user)):
         incidents = [
             {
                 "id":       r["id"],
-                "time":     r["created_at"].strftime("%Y-%m-%d %H:%M") if r["created_at"] else "",
+                "time":     _fmt_local(r["created_at"], "%Y-%m-%d %H:%M"),
                 "target":   r["target_name"] or "",
                 "db":       _db_label(r["target_type"] or ""),
                 "severity": (r["severity"] or "").upper(),
@@ -86,10 +105,10 @@ async def dashboard_data(days: int = 7, user: str = Depends(require_user)):
         ]
 
         # ── Daily chart ────────────────────────────────────────────────────────
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff = datetime.now(DISPLAY_TZ).astimezone(timezone.utc) - timedelta(days=days)
         daily_rows = await conn.fetch(
             """
-            SELECT DATE(created_at) AS day, severity, COUNT(*) AS cnt
+            SELECT DATE(created_at AT TIME ZONE 'Asia/Ho_Chi_Minh') AS day, severity, COUNT(*) AS cnt
             FROM incidents
             WHERE created_at >= $1
             GROUP BY day, severity
@@ -100,7 +119,7 @@ async def dashboard_data(days: int = 7, user: str = Depends(require_user)):
 
         labels_d, crit_d, warn_d, adv_d = [], [], [], []
         for i in range(days - 1, -1, -1):
-            d = (datetime.now(timezone.utc) - timedelta(days=i)).date()
+            d = (datetime.now(DISPLAY_TZ) - timedelta(days=i)).date()
             labels_d.append(d.strftime("%d/%m"))
             dm = {r["severity"].upper(): r["cnt"] for r in daily_rows if r["day"] == d}
             crit_d.append(dm.get("CRITICAL", 0))
@@ -110,12 +129,13 @@ async def dashboard_data(days: int = 7, user: str = Depends(require_user)):
         # ── Hourly chart (today) ───────────────────────────────────────────────
         hourly_rows = await conn.fetch(
             """
-            SELECT EXTRACT(HOUR FROM created_at)::int AS hr, COUNT(*) AS cnt
+            SELECT EXTRACT(HOUR FROM created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::int AS hr, COUNT(*) AS cnt
             FROM incidents
-            WHERE created_at >= CURRENT_DATE
+            WHERE created_at >= $1
             GROUP BY hr
             ORDER BY hr
-            """
+            """,
+            _local_day_start_utc(),
         )
         hourly = [0] * 24
         for r in hourly_rows:
@@ -171,8 +191,8 @@ async def audit_data(limit: int = 50, user: str = Depends(require_user)):
                 "status":      r["status"],
                 "approved_by": r["approved_by"] or "—",
                 "error":       r["error_message"] or "",
-                "created_at":  r["created_at"].strftime("%Y-%m-%d %H:%M:%S") if r["created_at"] else "",
-                "executed_at": r["executed_at"].strftime("%H:%M:%S") if r["executed_at"] else "—",
+                "created_at":  _fmt_local(r["created_at"]),
+                "executed_at": _fmt_local(r["executed_at"], "%H:%M:%S") if r["executed_at"] else "—",
             }
             for r in rows
         ]
