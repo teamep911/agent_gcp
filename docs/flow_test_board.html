@@ -48,7 +48,7 @@
       <h1>Agent Monitor Real Demo Flow Test</h1>
       <div class="sub">Realtime board for practical demo flows: preflight, inbound OEM-like scenarios, and reverse Google Chat command/audit scenarios.</div>
       <div class="meta">
-        <div class="pill">Updated: 2026-05-31T13:49:23+07:00</div>
+        <div class="pill">Updated: 2026-05-31T15:33:56+07:00</div>
         <div class="pill">Forward flow: OEM -> Agent -> Dashboard/Audit -> Gateway</div>
         <div class="pill">Reverse flow: Google Chat -> Gateway -> Agent -> Audit</div>
       </div>
@@ -112,6 +112,36 @@
       <div>
         <div class="step-title">S7_UNAUTHORIZED — S7 Unauthorized command rejection</div>
         <div class="detail">Unauthorized rejected as expected: {&#x27;detail&#x27;: &#x27;invalid_gateway_secret&#x27;}</div>
+      </div>
+    </div></div></div><div class="card track"><h3>Realtime Lock Demo — FLEXING 20m / alert mỗi 5m</h3><div class="steps"><div class="step passed">
+      <div class="dot"></div>
+      <div>
+        <div class="step-title">LOCK_CTX — Check FLEXING context</div>
+        <div class="detail">PDB_OPEN_MODE=READ WRITE</div>
+      </div>
+    </div><div class="step passed">
+      <div class="dot"></div>
+      <div>
+        <div class="step-title">LOCK_START — Start holder/waiter sessions</div>
+        <div class="detail">holder_pid=1011091 waiter_pid=1011100 holder_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_holder_long_20260531_153254.log waiter_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_waiter_long_20260531_153254.log</div>
+      </div>
+    </div><div class="step passed">
+      <div class="dot"></div>
+      <div>
+        <div class="step-title">LOCK_EVIDENCE — Capture lock evidence sql_id/sql_text/owner</div>
+        <div class="detail">owner=SYS sql_id=6gf3ff0pvjn4q wait_class=Application event=enq: UL - contention sql_text=DECLARE   l_handle VARCHAR2(128);   l_result NUMBER; BEGIN   DBMS_LOCK.ALLOCATE_UNIQUE(&#x27;MONITOR_V2_DEMO_APPLICATION_LOCK&#x27;, l_handle);	 l_re state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_153254.log</div>
+      </div>
+    </div><div class="step passed">
+      <div class="dot"></div>
+      <div>
+        <div class="step-title">LOCK_ALERT_LOOP — Repeat alert every 5 minutes while lock remains</div>
+        <div class="detail">Completed 1 repeated alerts; incidents=[95] state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_153254.log</div>
+      </div>
+    </div><div class="step passed">
+      <div class="dot"></div>
+      <div>
+        <div class="step-title">LOCK_FINISH — Finish / cleanup</div>
+        <div class="detail">holder_done rc=0 waiter_done rc=0 incidents=[95] state_log=/u01/app/agent_monitor/artifacts/demo_flexing/lock_state_20260531_153254.log</div>
       </div>
     </div></div></div></div>
     </section>
