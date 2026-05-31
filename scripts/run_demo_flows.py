@@ -95,8 +95,8 @@ def base_status() -> dict:
                 {'id': 's4_tablespace', 'label': 'S4 Tablespace threshold demo', 'status': 'pending', 'detail': ''},
             ]},
             {'id': 'reverse', 'name': 'Google Chat -> Gateway -> Agent -> Audit', 'steps': [
-                {'id': 's5_status', 'label': 'S5 /status flex command audit', 'status': 'pending', 'detail': ''},
-                {'id': 's6_blocking_locks', 'label': 'S6 /blocking_locks FLEX command audit', 'status': 'pending', 'detail': ''},
+                {'id': 's5_status', 'label': 'S5 /status FLEXING command audit', 'status': 'pending', 'detail': ''},
+                {'id': 's6_blocking_locks', 'label': 'S6 /blocking_locks FLEXING command audit', 'status': 'pending', 'detail': ''},
                 {'id': 's7_unauthorized', 'label': 'S7 Unauthorized command rejection', 'status': 'pending', 'detail': ''},
             ]},
         ],
@@ -123,8 +123,8 @@ def demo_payload(metric_name: str, metric_value: str, severity: str, message: st
     demo_id = f"DEMO-{int(time.time())}-{metric_name}"
     return {
         'source': 'oem',
-        'target_name': 'FLEX',
-        'target_type': 'oracle_database',
+        'target_name': 'FLEXING',
+        'target_type': 'oracle_pdb',
         'severity': severity,
         'metric_name': metric_name,
         'metric_column': metric_column or metric_name,
@@ -158,7 +158,7 @@ def send_command(data: dict, step_id: str, url: str, secret: str, command: str, 
 
 def send_bad_command(data: dict, step_id: str, url: str) -> None:
     set_step(data, step_id, 'running', 'Sending command with invalid gateway secret; expect HTTP 401')
-    payload = {'command_text': '/status flex', 'user_email': 'bad.actor@example.com'}
+    payload = {'command_text': '/status FLEXING', 'user_email': 'bad.actor@example.com'}
     code, body = http_json('POST', url, payload, {'X-Gateway-Secret': 'bad-secret'}, timeout=30)
     if code == 401:
         set_step(data, step_id, 'passed', f'Unauthorized rejected as expected: {body}')
@@ -190,8 +190,8 @@ def main() -> int:
     send_oem(data, 's1_lock', demo_payload('userBlockedSessionCount', '3', 'CRITICAL', 'Application lock/blocking session demo', 'blocking_lock'), webhook_secret, agent_oem)
     send_oem(data, 's4_tablespace', demo_payload('tablespaceUsedPercent', '91', 'CRITICAL', 'Tablespace threshold demo USERS 91 percent used', 'tablespace_critical'), webhook_secret, agent_oem)
 
-    send_command(data, 's5_status', agent_cmd, gateway_secret, '/status flex')
-    send_command(data, 's6_blocking_locks', agent_cmd, gateway_secret, '/blocking_locks FLEX')
+    send_command(data, 's5_status', agent_cmd, gateway_secret, '/status FLEXING')
+    send_command(data, 's6_blocking_locks', agent_cmd, gateway_secret, '/blocking_locks FLEXING')
     send_bad_command(data, 's7_unauthorized', agent_cmd)
 
     failed = [s for t in data['tracks'] for s in t['steps'] if s['status'] == 'failed']
