@@ -5,7 +5,8 @@ import os
 import structlog
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse, RedirectResponse
 
 load_dotenv()
 
@@ -34,6 +35,17 @@ app.include_router(webhook_router, prefix="/webhook")
 app.include_router(google_chat_router)
 app.include_router(auth_router)
 app.include_router(dashboard_router)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code == 401:
+        accept = (request.headers.get("accept") or "").lower()
+        path = request.url.path
+        is_api = path.endswith("/data") or path.endswith("/audit") or "application/json" in accept
+        if "text/html" in accept and not is_api and not path.startswith("/login"):
+            return RedirectResponse(url="/login", status_code=302)
+    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
 
 
 def _preflight_check():

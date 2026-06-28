@@ -1,0 +1,17 @@
+[Unit]
+Description=Agent Monitor Dashboard (port 2121)
+After=network-online.target agent-monitor.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=oracle
+Group=oinstall
+WorkingDirectory=/u01/app/agent-monitor/agent
+EnvironmentFile=/u01/app/agent-monitor/.env.runtime
+ExecStart=/u01/app/agent-monitor/venv/bin/uvicorn dashboard_app:app --host 0.0.0.0 --port 2121 --log-level info --no-access-log
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
