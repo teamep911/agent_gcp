@@ -35,7 +35,7 @@ class OEMPayload(BaseModel):
 
 
 WEBHOOK_SECRET = os.getenv("AGENT_WEBHOOK_SECRET", "")
-_rule_engine = RuleEngine(os.getenv("RULES_CONFIG_PATH", "/u01/app/agent_monitor/agent/config/rules.yaml"))
+_rule_engine = RuleEngine(os.getenv("RULES_CONFIG_PATH", "/u01/app/agent-monitor/agent/config/rules.yaml"))
 _rca_engine = RCAEngine()
 
 
@@ -168,7 +168,7 @@ def _should_capture_perf_bundle(event: dict, rule: dict) -> bool:
 
 
 async def _capture_perf_bundle_flex() -> dict | None:
-    script = os.getenv("PERF_BUNDLE_SCRIPT", "/u01/app/agent_monitor/scripts/perf_bundle/capture_perf_bundle_flex.sh")
+    script = os.getenv("PERF_BUNDLE_SCRIPT", "/u01/app/agent-monitor/scripts/perf_bundle/capture_perf_bundle_flex.sh")
     timeout = int(os.getenv("PERF_BUNDLE_TIMEOUT_SECONDS", "180"))
     if not Path(script).exists():
         log.warning("perf_bundle.script.missing", script=script)
